@@ -1,6 +1,15 @@
 package errors
 
-type transientError error
+type transientInterface interface {
+	error
+	transient() bool
+}
+
+type transientError struct { error }
+
+func (t transientError) transient() bool {
+	return true
+}
 
 func IsTransient(err error) bool {
 	_, ok := err.(transientError)
@@ -8,5 +17,5 @@ func IsTransient(err error) bool {
 }
 
 func Transient(err error) error {
-	return transientError(err)
+	return transientError{err}
 }
