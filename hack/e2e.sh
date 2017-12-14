@@ -27,6 +27,10 @@ mkdir -p $TEST_DIR
 
 source "${SCRIPT_DIR}/libe2e.sh"
 
+# Mandatory environment variables
+: ${CHART_VALUES:?}
+: ${CHART_VALUES_CASSANDRA:?}
+
 helm delete --purge "${RELEASE_NAME}" || true
 
 function debug_navigator_start() {
@@ -37,10 +41,6 @@ function debug_navigator_start() {
 }
 
 function helm_install() {
-    if [ "${CHART_VALUES}" == "" ]; then
-        echo "CHART_VALUES must be set";
-        exit 1
-    fi
     helm delete --purge "${RELEASE_NAME}" || true
     echo "Installing navigator..."
     if helm --debug install --wait --name "${RELEASE_NAME}" contrib/charts/navigator \
@@ -184,7 +184,14 @@ function test_cassandracluster() {
     echo "Testing CassandraCluster"
     local namespace="${1}"
     local CHART_NAME="cassandra-${TEST_ID}"
+
     kubectl create namespace "${namespace}"
+
+    # XXX Temporary work around until cassandra controller manages RBAC
+    kubectl create --namespace "${namespace}" \
+            rolebinding "${namespace}-binding" \
+            --clusterrole=cluster-admin \
+            --serviceaccount="${namespace}:default"
 
     if ! kubectl get \
          --namespace "${namespace}" \
@@ -198,6 +205,7 @@ function test_cassandracluster() {
          --name "${CHART_NAME}" \
          --namespace "${namespace}" \
          contrib/charts/cassandra \
+         --values "${CHART_VALUES_CASSANDRA}" \
          --set replicaCount=1
 
     # Wait 5 minutes for cassandra to start and listen for CQL queries.
@@ -217,6 +225,8 @@ function test_cassandracluster() {
     helm --debug upgrade \
          "${CHART_NAME}" \
          contrib/charts/cassandra \
+         --values "${CHART_VALUES_CASSANDRA}" \
+         --set replicaCount=1 \
          --set cqlPort=9043
 
     # Wait 60s for cassandra CQL port to change
@@ -231,6 +241,7 @@ function test_cassandracluster() {
     helm --debug upgrade \
          "${CHART_NAME}" \
          contrib/charts/cassandra \
+         --values "${CHART_VALUES_CASSANDRA}" \
          --set cqlPort=9043 \
          --set replicaCount=2
 
