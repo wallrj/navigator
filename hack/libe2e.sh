@@ -139,3 +139,66 @@ function fail_and_exit() {
 
     exit 1
 }
+
+function debug_navigator_start() {
+    kubectl api-versions
+    kubectl get pods --all-namespaces
+    kubectl describe deploy
+    kubectl describe pod
+}
+
+function navigator_install() {
+    local release_name="${1}"
+    helm delete --purge "${release_name}" || true
+    echo "Installing navigator..."
+    if helm --debug install --wait --name "${release_name}" ${ROOT_DIR}/contrib/charts/navigator \
+         --values ${CHART_VALUES}
+    then
+        return 0
+    fi
+    return 1
+}
+
+# Wait for navigator API to be ready
+function navigator_ready() {
+    local release_name="${1}"
+    local replica_count_controller=$(
+        kubectl get deployment ${release_name}-navigator-controller \
+                --output 'jsonpath={.status.readyReplicas}' || true)
+    if [[ "${replica_count_controller}" -eq 0 ]]; then
+        return 1
+    fi
+    local replica_count_apiserver=$(
+        kubectl get deployment ${release_name}-navigator-apiserver \
+                --output 'jsonpath={.status.readyReplicas}' || true)
+    if [[ "${replica_count_apiserver}" -eq 0 ]]; then
+        return 1
+    fi
+    if ! kubectl api-versions | grep 'navigator.jetstack.io'; then
+        return 1
+    fi
+    # Even after the API appears in api-versions, it takes a short time for API
+    # server to recognise navigator API types.
+    if ! kubectl get esc; then
+        return 1
+    fi
+    if ! kube_event_exists "kube-system" \
+         "navigator-controller:Endpoints:Normal:LeaderElection"
+    then
+        return 1
+    fi
+    return 0
+}
+
+function install_navigator_and_wait() {
+    local release_name="${1}"
+    # Retry helm install to work around intermittent API server availability.
+    # See https://github.com/jetstack/navigator/issues/118
+    if ! retry navigator_install "${release_name}"; then
+        return 1
+    fi
+    echo "Waiting for Navigator to be ready..."
+    if ! retry navigator_ready "${release_name}"; then
+        return 1
+    fi
+}

@@ -1,0 +1,4 @@
+FROM gcr.io/google-samples/cassandra:v12
+COPY pilot-cassandra /pilot
+VOLUME /etc/pilot
+ENTRYPOINT ["/pilot"]
