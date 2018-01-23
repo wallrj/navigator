@@ -10,6 +10,7 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
+	"github.com/jetstack/navigator/pkg/cassandra/nodetool"
 	clientset "github.com/jetstack/navigator/pkg/client/clientset/versioned"
 	listersv1alpha1 "github.com/jetstack/navigator/pkg/client/listers/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/pilot/genericpilot"
@@ -26,6 +27,7 @@ type Pilot struct {
 	pilotInformerSynced cache.InformerSynced
 	// a reference to the GenericPilot for this Pilot
 	genericPilot *genericpilot.GenericPilot
+	nodeTool     nodetool.Interface
 }
 
 func NewPilot(opts *PilotOptions) (*Pilot, error) {
@@ -36,6 +38,7 @@ func NewPilot(opts *PilotOptions) (*Pilot, error) {
 		navigatorClient:     opts.navigatorClientset,
 		pilotLister:         pilotInformer.Lister(),
 		pilotInformerSynced: pilotInformer.Informer().HasSynced,
+		nodeTool:            opts.nodeTool,
 	}
 
 	return p, nil
@@ -67,12 +70,30 @@ func (p *Pilot) syncFunc(pilot *v1alpha1.Pilot) error {
 	return nil
 }
 
+func localNodeUpAndNormal(nodeTool nodetool.Interface) error {
+	nodes, err := nodeTool.Status()
+	if err != nil {
+		return err
+	}
+	localNode := nodes.LocalNode()
+	if localNode == nil {
+		return fmt.Errorf("Local node not found: %v", nodes)
+	}
+	if localNode.Status != nodetool.NodeStatusUp {
+		return fmt.Errorf("Unexpected local node status: %v", localNode.Status)
+	}
+	if localNode.State != nodetool.NodeStateNormal {
+		return fmt.Errorf("Unexpected local node state: %v", localNode.State)
+	}
+	return nil
+}
+
 func (p *Pilot) ReadinessCheck() error {
 	glog.V(2).Infof("readiness status: %q", "ok")
-	return nil
+	return localNodeUpAndNormal(p.nodeTool)
 }
 
 func (p *Pilot) LivenessCheck() error {
 	glog.V(2).Infof("liveness status: %q", "ok")
-	return nil
+	return localNodeUpAndNormal(p.nodeTool)
 }

@@ -287,5 +287,5 @@ if [[ "test_cassandracluster" = "${TEST_PREFIX}"* ]]; then
     if [ "${FAILURE_COUNT}" -gt "0" ]; then
         fail_and_exit "${CASS_TEST_NS}"
     fi
-    kube_delete_namespace_and_wait "${CASS_TEST_NS}"
+    # kube_delete_namespace_and_wait "${CASS_TEST_NS}"
 fi
