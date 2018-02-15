@@ -7,13 +7,25 @@ import (
 	"github.com/jetstack/navigator/pkg/apis/navigator"
 )
 
-func ValidateCassandraCluster(esc *navigator.CassandraCluster) field.ErrorList {
-	allErrs := ValidateObjectMeta(&esc.ObjectMeta, true, apimachineryvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
-	allErrs = append(allErrs, ValidateCassandraClusterSpec(&esc.Spec, field.NewPath("spec"))...)
+func ValidateCassandraCluster(c *navigator.CassandraCluster) field.ErrorList {
+	allErrs := ValidateObjectMeta(&c.ObjectMeta, true, apimachineryvalidation.NameIsDNSSubdomain, field.NewPath("metadata"))
+	allErrs = append(allErrs, ValidateCassandraClusterSpec(&c.Spec, field.NewPath("spec"))...)
 	return allErrs
 }
 
 func ValidateCassandraClusterSpec(spec *navigator.CassandraClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := ValidateNavigatorClusterConfig(&spec.NavigatorClusterConfig, fldPath)
+	if spec.Image != nil {
+		allErrs = append(
+			allErrs,
+			ValidateImageSpec(spec.Image, fldPath.Child("image"))...,
+		)
+	}
+	if spec.Version.Equal(emptySemver) {
+		allErrs = append(
+			allErrs,
+			field.Required(fldPath.Child("version"), "must be a semver version"),
+		)
+	}
 	return allErrs
 }

@@ -3,6 +3,7 @@ kind: "CassandraCluster"
 metadata:
   name: "demo"
 spec:
+  version: "3.11.1"
   cqlPort: 9042
   sysctls:
   - "vm.max_map_count=0"
@@ -13,7 +14,3 @@ spec:
       enabled: true
       size: "5Gi"
       storageClass: "default"
-  image:
-    repository: "cassandra"
-    tag: "3"
-    pullPolicy: "IfNotPresent"
