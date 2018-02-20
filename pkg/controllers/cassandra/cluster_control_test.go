@@ -3,10 +3,13 @@ package cassandra_test
 import (
 	"reflect"
 	"testing"
+	"testing/quick"
 
 	v1alpha1 "github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra"
+	"github.com/kr/pretty"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestNextAction(t *testing.T) {
@@ -16,6 +19,10 @@ func TestNextAction(t *testing.T) {
 	}{
 		"scale up": {
 			c: &v1alpha1.CassandraCluster{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "bar",
+					Namespace: "foo",
+				},
 				Spec: v1alpha1.CassandraClusterSpec{
 					NodePools: []v1alpha1.CassandraClusterNodePool{
 						{
@@ -33,8 +40,10 @@ func TestNextAction(t *testing.T) {
 				},
 			},
 			a: &cassandra.ScaleUp{
-				Replicas: 2,
-				NodePool: "np1",
+				Namespace: "foo",
+				Cluster:   "bar",
+				NodePool:  "np1",
+				Replicas:  2,
 			},
 		},
 	}
@@ -48,9 +57,61 @@ func TestNextAction(t *testing.T) {
 					t.Fatal(err)
 				}
 				if !reflect.DeepEqual(test.a, a) {
-					t.Errorf("Expected %#v. Got %#v", test.a, a)
+					t.Errorf("Expected did not equal actual: %s", pretty.Diff(test.a, a))
 				}
 			},
 		)
+	}
+}
+
+func NodePoolsWithoutStatus(c v1alpha1.CassandraCluster) []string {
+	nodepoolsWithoutStatus := []string{}
+	for _, np := range c.Spec.NodePools {
+		_, found := c.Status.NodePools[np.Name]
+		if !found {
+			nodepoolsWithoutStatus = append(nodepoolsWithoutStatus, np.Name)
+		}
+	}
+	return nodepoolsWithoutStatus
+}
+
+func NodePoolsAllHaveStatus(c v1alpha1.CassandraCluster) bool {
+	return len(NodePoolsWithoutStatus(c)) == 0
+}
+
+func TestQuick(t *testing.T) {
+	f := func(c v1alpha1.CassandraCluster) bool {
+		a, err := cassandra.NextAction(&c)
+		// NextAction should never return an error
+		if err != nil {
+			t.Errorf("Unexpected error: %s", err)
+			return false
+		}
+		// We should not perform an action until all the nodepool statuses have been reported
+		if !NodePoolsAllHaveStatus(c) {
+			if a != nil {
+				t.Errorf(
+					"Unexpected action while there are nodepools without status: %#v", c,
+				)
+				return false
+			}
+		}
+
+		switch action := a.(type) {
+		case *cassandra.ScaleUp:
+			_, found := c.Status.NodePools[action.NodePool]
+			if !found {
+				t.Errorf("Unexpected attempt to scale up a nodepool without a status")
+				return false
+			}
+		}
+		return true
+	}
+	config := &quick.Config{
+		MaxCount: 1000,
+	}
+	err := quick.Check(f, config)
+	if err != nil {
+		t.Errorf("quick check failure: %#v", err)
 	}
 }

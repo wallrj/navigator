@@ -28,6 +28,7 @@ const (
 	MessageErrorSyncService        = "Error syncing service: %s"
 	MessageErrorSyncNodePools      = "Error syncing node pools: %s"
 	MessageErrorSyncPilots         = "Error syncing pilots: %s"
+	MessageErrorSync               = "Error syncing: %s"
 	MessageSuccessSync             = "Successfully synced CassandraCluster"
 )
 
@@ -150,6 +151,32 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 		return err
 	}
 
+	a, err := NextAction(c)
+	if err != nil {
+		e.recorder.Eventf(
+			c,
+			apiv1.EventTypeWarning,
+			ErrorSync,
+			MessageErrorSync,
+			err,
+		)
+		return err
+	}
+	s := &controllers.State{}
+	if a != nil {
+		err = a.Execute(s)
+		if err != nil {
+			e.recorder.Eventf(
+				c,
+				apiv1.EventTypeWarning,
+				ErrorSync,
+				MessageErrorSync,
+				err,
+			)
+			return err
+		}
+	}
+
 	e.recorder.Event(
 		c,
 		apiv1.EventTypeNormal,
@@ -160,15 +187,21 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 }
 
 func NextAction(c *v1alpha1.CassandraCluster) (controllers.Action, error) {
+	// Don't return an action unless all the node pools have a status
 	for _, np := range c.Spec.NodePools {
-		nps, ok := c.Status.NodePools[np.Name]
-		if !ok {
-			continue
+		_, found := c.Status.NodePools[np.Name]
+		if !found {
+			return nil, nil
 		}
+	}
+	for _, np := range c.Spec.NodePools {
+		nps := c.Status.NodePools[np.Name]
 		if np.Replicas > nps.ReadyReplicas {
 			return &ScaleUp{
-				Replicas: np.Replicas,
-				NodePool: np.Name,
+				Cluster:   c.Name,
+				Namespace: c.Namespace,
+				Replicas:  np.Replicas,
+				NodePool:  np.Name,
 			}, nil
 		}
 	}
@@ -176,8 +209,10 @@ func NextAction(c *v1alpha1.CassandraCluster) (controllers.Action, error) {
 }
 
 type ScaleUp struct {
-	Replicas int64
-	NodePool string
+	Cluster   string
+	Namespace string
+	Replicas  int64
+	NodePool  string
 }
 
 var _ controllers.Action = &ScaleUp{}
