@@ -8,6 +8,7 @@ import (
 	v1alpha1 "github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/actions"
 	"github.com/kr/pretty"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -39,7 +40,7 @@ func TestNextAction(t *testing.T) {
 					},
 				},
 			},
-			a: &cassandra.ScaleUp{
+			a: &actions.ScaleUp{
 				Namespace: "foo",
 				Cluster:   "bar",
 				NodePool:  "np1",
@@ -87,21 +88,22 @@ func TestQuick(t *testing.T) {
 			t.Errorf("Unexpected error: %s", err)
 			return false
 		}
-		// We should not perform an action until all the nodepool statuses have been reported
-		if !NodePoolsAllHaveStatus(c) {
-			if a != nil {
-				t.Errorf(
-					"Unexpected action while there are nodepools without status: %#v", c,
-				)
-				return false
-			}
-		}
 
 		switch action := a.(type) {
-		case *cassandra.ScaleUp:
+		case *actions.CreateNodePool:
 			_, found := c.Status.NodePools[action.NodePool]
+			if found {
+				t.Errorf("Unexpected attempt to create a nodepool when there's an existing status")
+				return false
+			}
+		case *actions.ScaleUp:
+			nps, found := c.Status.NodePools[action.NodePool]
 			if !found {
 				t.Errorf("Unexpected attempt to scale up a nodepool without a status")
+				return false
+			}
+			if action.Replicas <= nps.ReadyReplicas {
+				t.Errorf("Unexpected attempt to scale up a nodepool with >= ready replicas")
 				return false
 			}
 		}

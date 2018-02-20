@@ -7,6 +7,7 @@ import (
 
 	v1alpha1 "github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/actions"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/nodepool"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/pilot"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/role"
@@ -187,17 +188,16 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 }
 
 func NextAction(c *v1alpha1.CassandraCluster) (controllers.Action, error) {
-	// Don't return an action unless all the node pools have a status
 	for _, np := range c.Spec.NodePools {
 		_, found := c.Status.NodePools[np.Name]
 		if !found {
-			return nil, nil
+			return &actions.CreateNodePool{}, nil
 		}
 	}
 	for _, np := range c.Spec.NodePools {
 		nps := c.Status.NodePools[np.Name]
 		if np.Replicas > nps.ReadyReplicas {
-			return &ScaleUp{
+			return &actions.ScaleUp{
 				Cluster:   c.Name,
 				Namespace: c.Namespace,
 				Replicas:  np.Replicas,
@@ -206,21 +206,4 @@ func NextAction(c *v1alpha1.CassandraCluster) (controllers.Action, error) {
 		}
 	}
 	return nil, nil
-}
-
-type ScaleUp struct {
-	Cluster   string
-	Namespace string
-	Replicas  int64
-	NodePool  string
-}
-
-var _ controllers.Action = &ScaleUp{}
-
-func (a *ScaleUp) Name() string {
-	return "scaleup"
-}
-
-func (a *ScaleUp) Execute(s *controllers.State) error {
-	return nil
 }
