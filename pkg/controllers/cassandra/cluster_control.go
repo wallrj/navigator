@@ -6,6 +6,7 @@ import (
 	"k8s.io/client-go/tools/record"
 
 	v1alpha1 "github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
+	"github.com/jetstack/navigator/pkg/controllers"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/nodepool"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/pilot"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/role"
@@ -148,11 +149,43 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 		)
 		return err
 	}
+
 	e.recorder.Event(
 		c,
 		apiv1.EventTypeNormal,
 		SuccessSync,
 		MessageSuccessSync,
 	)
+	return nil
+}
+
+func NextAction(c *v1alpha1.CassandraCluster) (controllers.Action, error) {
+	for _, np := range c.Spec.NodePools {
+		nps, ok := c.Status.NodePools[np.Name]
+		if !ok {
+			continue
+		}
+		if np.Replicas > nps.ReadyReplicas {
+			return &ScaleUp{
+				Replicas: np.Replicas,
+				NodePool: np.Name,
+			}, nil
+		}
+	}
+	return nil, nil
+}
+
+type ScaleUp struct {
+	Replicas int64
+	NodePool string
+}
+
+var _ controllers.Action = &ScaleUp{}
+
+func (a *ScaleUp) Name() string {
+	return "scaleup"
+}
+
+func (a *ScaleUp) Execute(s *controllers.State) error {
 	return nil
 }
