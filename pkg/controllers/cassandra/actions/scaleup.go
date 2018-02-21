@@ -1,20 +1,21 @@
 package actions
 
-import "github.com/jetstack/navigator/pkg/controllers"
+import (
+	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
+	"github.com/jetstack/navigator/pkg/controllers"
+)
 
-type ScaleUp struct {
-	Cluster   string
-	Namespace string
-	Replicas  int64
-	NodePool  string
+type ScaleOut struct {
+	Cluster  *v1alpha1.CassandraCluster
+	NodePool *v1alpha1.CassandraClusterNodePool
 }
 
-var _ controllers.Action = &ScaleUp{}
+var _ controllers.Action = &ScaleOut{}
 
-func (a *ScaleUp) Name() string {
-	return "scaleup"
+func (a *ScaleOut) Name() string {
+	return "ScaleOut"
 }
 
-func (a *ScaleUp) Execute(s *controllers.State) error {
+func (a *ScaleOut) Execute(s *controllers.State) error {
 	return nil
 }

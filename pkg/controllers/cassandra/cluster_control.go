@@ -152,17 +152,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 		return err
 	}
 
-	a, err := NextAction(c)
-	if err != nil {
-		e.recorder.Eventf(
-			c,
-			apiv1.EventTypeWarning,
-			ErrorSync,
-			MessageErrorSync,
-			err,
-		)
-		return err
-	}
+	a := NextAction(c)
 	s := &controllers.State{}
 	if a != nil {
 		err = a.Execute(s)
@@ -187,26 +177,24 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 	return nil
 }
 
-func NextAction(c *v1alpha1.CassandraCluster) (controllers.Action, error) {
+func NextAction(c *v1alpha1.CassandraCluster) controllers.Action {
 	for _, np := range c.Spec.NodePools {
 		_, found := c.Status.NodePools[np.Name]
 		if !found {
 			return &actions.CreateNodePool{
 				Cluster:  c,
 				NodePool: &np,
-			}, nil
+			}
 		}
 	}
 	for _, np := range c.Spec.NodePools {
 		nps := c.Status.NodePools[np.Name]
 		if np.Replicas > nps.ReadyReplicas {
-			return &actions.ScaleUp{
-				Cluster:   c.Name,
-				Namespace: c.Namespace,
-				Replicas:  np.Replicas,
-				NodePool:  np.Name,
-			}, nil
+			return &actions.ScaleOut{
+				Cluster:  c,
+				NodePool: &np,
+			}
 		}
 	}
-	return nil, nil
+	return nil
 }
