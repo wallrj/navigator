@@ -86,6 +86,12 @@ func NewCassandra(
 			WorkFunc: cc.handlePodObject,
 		},
 	)
+	// An event handler to trigger status updates when statefulsets change
+	statefulSets.Informer().AddEventHandler(
+		&controllers.BlockingEventHandler{
+			WorkFunc: cc.handleObject,
+		},
+	)
 	cc.cassLister = cassClusters.Lister()
 	cc.statefulSetLister = statefulSets.Lister()
 	cc.cassListerSynced = cassClusters.Informer().HasSynced
