@@ -25,5 +25,18 @@ func (a *CreateNodePool) Execute(s *controllers.State) error {
 	// if k8sErrors.IsAlreadyExists(err) {
 	//	return nil
 	// }
-	return err
+	if err != nil {
+		return err
+	}
+	// nps, found := a.Cluster.Status.NodePools[a.NodePool.Name]
+	// if !found {
+	//	a.Cluster.Status.NodePools[a.NodePool.Name] = nps
+	//	_, err = s.NavigatorClientset.Navigator().CassandraClusters(a.Cluster.Namespace).UpdateStatus(
+	//		a.Cluster,
+	//	)
+	// }
+	// if err != nil {
+	//	return err
+	// }
+	return nil
 }
