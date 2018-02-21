@@ -48,6 +48,7 @@ type defaultCassandraClusterControl struct {
 	roleControl                role.Interface
 	roleBindingControl         rolebinding.Interface
 	recorder                   record.EventRecorder
+	state                      *controllers.State
 }
 
 func NewControl(
@@ -59,6 +60,7 @@ func NewControl(
 	roleControl role.Interface,
 	roleBindingControl rolebinding.Interface,
 	recorder record.EventRecorder,
+	state *controllers.State,
 ) ControlInterface {
 	return &defaultCassandraClusterControl{
 		seedProviderServiceControl: seedProviderServiceControl,
@@ -69,6 +71,7 @@ func NewControl(
 		roleControl:                roleControl,
 		roleBindingControl:         roleBindingControl,
 		recorder:                   recorder,
+		state:                      state,
 	}
 }
 
@@ -153,9 +156,8 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 	}
 
 	a := NextAction(c)
-	s := &controllers.State{}
 	if a != nil {
-		err = a.Execute(s)
+		err = a.Execute(e.state)
 		if err != nil {
 			e.recorder.Eventf(
 				c,

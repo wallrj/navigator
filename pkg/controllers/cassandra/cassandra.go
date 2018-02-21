@@ -135,6 +135,7 @@ func NewCassandra(
 			recorder,
 		),
 		recorder,
+		&controllers.State{Clientset: kubeClient},
 	)
 	cc.recorder = recorder
 	return cc
