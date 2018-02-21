@@ -191,7 +191,10 @@ func NextAction(c *v1alpha1.CassandraCluster) (controllers.Action, error) {
 	for _, np := range c.Spec.NodePools {
 		_, found := c.Status.NodePools[np.Name]
 		if !found {
-			return &actions.CreateNodePool{}, nil
+			return &actions.CreateNodePool{
+				Cluster:  c,
+				NodePool: &np,
+			}, nil
 		}
 	}
 	for _, np := range c.Spec.NodePools {
