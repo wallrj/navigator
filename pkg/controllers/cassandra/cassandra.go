@@ -145,7 +145,10 @@ func NewCassandra(
 			recorder,
 		),
 		recorder,
-		&controllers.State{Clientset: kubeClient},
+		&controllers.State{
+			Clientset:         kubeClient,
+			StatefulSetLister: statefulSets.Lister(),
+		},
 	)
 	cc.recorder = recorder
 	return cc

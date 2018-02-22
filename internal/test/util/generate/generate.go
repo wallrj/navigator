@@ -123,13 +123,19 @@ func StatefulSet(c StatefulSetConfig) *apps.StatefulSet {
 
 func AssertStatefulSetMatches(t *testing.T, expected StatefulSetConfig, actual *apps.StatefulSet) {
 	if actual.Name != expected.Name {
-		t.Errorf("Name %q != %q", actual.Name, expected.Name)
+		t.Errorf("Name %q != %q", expected.Name, actual.Name)
 	}
 	if actual.Namespace != expected.Namespace {
-		t.Errorf("Namespace %q != %q", actual.Namespace, expected.Namespace)
+		t.Errorf("Namespace %q != %q", expected.Namespace, actual.Namespace)
 	}
-	if actual.Spec.Replicas != expected.Replicas {
-		t.Errorf("Replicas %#v != %#v", actual.Spec.Replicas, expected.Replicas)
+	if expected.Replicas != nil {
+		if actual.Spec.Replicas == nil {
+			t.Errorf("Replicas %d != %v", *expected.Replicas, nil)
+		} else {
+			if *actual.Spec.Replicas != *expected.Replicas {
+				t.Errorf("Replicas %d != %d", *expected.Replicas, *actual.Spec.Replicas)
+			}
+		}
 	}
 }
 

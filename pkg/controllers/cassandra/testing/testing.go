@@ -160,7 +160,10 @@ func (f *Fixture) setupAndSync() (v1alpha1.CassandraClusterStatus, error) {
 		f.RoleControl,
 		f.RoleBindingControl,
 		recorder,
-		&controllers.State{Clientset: f.k8sClient},
+		&controllers.State{
+			Clientset:         f.k8sClient,
+			StatefulSetLister: statefulSets,
+		},
 	)
 	stopCh := make(chan struct{})
 	defer close(stopCh)

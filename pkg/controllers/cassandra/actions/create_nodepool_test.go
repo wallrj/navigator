@@ -11,14 +11,6 @@ import (
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/actions"
 )
 
-func int32Ptr(i int32) *int32 {
-	return &i
-}
-
-func int64Ptr(i int64) *int64 {
-	return &i
-}
-
 func TestCreateNodePool(t *testing.T) {
 	type testT struct {
 		kubeObjects         []runtime.Object
@@ -40,6 +32,7 @@ func TestCreateNodePool(t *testing.T) {
 			expectedStatefulSet: generate.StatefulSetConfig{
 				Name:      "cass-cluster1-pool1",
 				Namespace: "ns1",
+				Replicas:  int32Ptr(0),
 			},
 		},
 		"An error is returned if the statefulset already exists": {
@@ -48,6 +41,7 @@ func TestCreateNodePool(t *testing.T) {
 					generate.StatefulSetConfig{
 						Name:      "cass-cluster1-pool1",
 						Namespace: "ns1",
+						Replicas:  int32Ptr(10),
 					},
 				),
 			},
@@ -58,6 +52,7 @@ func TestCreateNodePool(t *testing.T) {
 			expectedStatefulSet: generate.StatefulSetConfig{
 				Name:      "cass-cluster1-pool1",
 				Namespace: "ns1",
+				Replicas:  int32Ptr(10),
 			},
 			expectedErr: true,
 		},
