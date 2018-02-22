@@ -35,7 +35,7 @@ type CassandraClusterSpec struct {
 
 type CassandraClusterNodePool struct {
 	Name        string
-	Replicas    int64
+	Replicas    int32
 	Persistence PersistenceConfig
 }
 
