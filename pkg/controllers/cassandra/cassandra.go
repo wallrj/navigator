@@ -8,6 +8,7 @@ import (
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	appsinformers "k8s.io/client-go/informers/apps/v1beta1"
@@ -20,6 +21,7 @@ import (
 
 	rbacinformers "k8s.io/client-go/informers/rbac/v1beta1"
 
+	v1alpha1 "github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	navigatorclientset "github.com/jetstack/navigator/pkg/client/clientset/versioned"
 	navigatorinformers "github.com/jetstack/navigator/pkg/client/informers/externalversions/navigator/v1alpha1"
 	listersv1alpha1 "github.com/jetstack/navigator/pkg/client/listers/navigator/v1alpha1"
@@ -53,6 +55,7 @@ type CassandraController struct {
 	roleBindingsListerSynced    cache.InformerSynced
 	queue                       workqueue.RateLimitingInterface
 	recorder                    record.EventRecorder
+	navigatorClient             navigatorclientset.Interface
 }
 
 func NewCassandra(
@@ -74,8 +77,9 @@ func NewCassandra(
 	)
 
 	cc := &CassandraController{
-		queue:    queue,
-		recorder: recorder,
+		queue:           queue,
+		recorder:        recorder,
+		navigatorClient: naviClient,
 	}
 	cassClusters.Informer().AddEventHandler(
 		&controllers.QueuingEventHandler{Queue: queue},
@@ -235,7 +239,16 @@ func (e *CassandraController) sync(key string) (err error) {
 		)
 		return err
 	}
-	return e.control.Sync(cass.DeepCopy())
+	status, err := e.control.Sync(cass)
+	updateErr := e.updateStatus(cass, status)
+	return utilerrors.NewAggregate([]error{err, updateErr})
+}
+
+func (e *CassandraController) updateStatus(c *v1alpha1.CassandraCluster, status v1alpha1.CassandraClusterStatus) error {
+	copy := c.DeepCopy()
+	copy.Status = status
+	_, err := e.navigatorClient.NavigatorV1alpha1().CassandraClusters(c.Namespace).UpdateStatus(copy)
+	return err
 }
 
 func (e *CassandraController) enqueueCassandraCluster(obj interface{}) {

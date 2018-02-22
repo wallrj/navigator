@@ -79,7 +79,7 @@ func (f *Fixture) AddObjectN(o runtime.Object) {
 	f.naviObjects = append(f.naviObjects, o)
 }
 
-func (f *Fixture) setupAndSync() error {
+func (f *Fixture) setupAndSync() (v1alpha1.CassandraClusterStatus, error) {
 	recorder := record.NewFakeRecorder(0)
 	finished := make(chan struct{})
 	defer func() {
@@ -182,14 +182,14 @@ func (f *Fixture) setupAndSync() error {
 }
 
 func (f *Fixture) Run() {
-	err := f.setupAndSync()
+	_, err := f.setupAndSync()
 	if err != nil {
 		f.t.Error(err)
 	}
 }
 
 func (f *Fixture) RunExpectError() {
-	err := f.setupAndSync()
+	_, err := f.setupAndSync()
 	if err == nil {
 		f.t.Error("Sync was expected to return an error. Got nil.")
 	}

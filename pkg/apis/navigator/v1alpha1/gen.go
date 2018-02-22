@@ -45,7 +45,7 @@ func (_ CassandraClusterSpec) Generate(rand *rand.Rand, size int) reflect.Value 
 func (_ CassandraClusterNodePool) Generate(rand *rand.Rand, size int) reflect.Value {
 	o := CassandraClusterNodePool{
 		Name:     fmt.Sprintf("np%d", rand.Intn(10)),
-		Replicas: rand.Int63n(10),
+		Replicas: rand.Int31n(10),
 	}
 	return reflect.ValueOf(o)
 }

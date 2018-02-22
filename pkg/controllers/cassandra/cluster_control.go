@@ -34,7 +34,7 @@ const (
 )
 
 type ControlInterface interface {
-	Sync(*v1alpha1.CassandraCluster) error
+	Sync(*v1alpha1.CassandraCluster) (v1alpha1.CassandraClusterStatus, error)
 }
 
 var _ ControlInterface = &defaultCassandraClusterControl{}
@@ -75,7 +75,8 @@ func NewControl(
 	}
 }
 
-func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) error {
+func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) (v1alpha1.CassandraClusterStatus, error) {
+	c = c.DeepCopy()
 	glog.V(4).Infof("defaultCassandraClusterControl.Sync")
 	err := e.seedProviderServiceControl.Sync(c)
 	if err != nil {
@@ -86,7 +87,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 			MessageErrorSyncService,
 			err,
 		)
-		return err
+		return c.Status, err
 	}
 	err = e.cqlServiceControl.Sync(c)
 	if err != nil {
@@ -97,7 +98,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 			MessageErrorSyncService,
 			err,
 		)
-		return err
+		return c.Status, err
 	}
 	err = e.nodepoolControl.Sync(c)
 	if err != nil {
@@ -108,7 +109,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 			MessageErrorSyncNodePools,
 			err,
 		)
-		return err
+		return c.Status, err
 	}
 	err = e.pilotControl.Sync(c)
 	if err != nil {
@@ -119,7 +120,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 			MessageErrorSyncPilots,
 			err,
 		)
-		return err
+		return c.Status, err
 	}
 	err = e.serviceAccountControl.Sync(c)
 	if err != nil {
@@ -130,7 +131,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 			MessageErrorSyncServiceAccount,
 			err,
 		)
-		return err
+		return c.Status, err
 	}
 	err = e.roleControl.Sync(c)
 	if err != nil {
@@ -141,7 +142,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 			MessageErrorSyncRole,
 			err,
 		)
-		return err
+		return c.Status, err
 	}
 	err = e.roleBindingControl.Sync(c)
 	if err != nil {
@@ -152,7 +153,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 			MessageErrorSyncRoleBinding,
 			err,
 		)
-		return err
+		return c.Status, err
 	}
 
 	a := NextAction(c)
@@ -166,7 +167,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 				MessageErrorSync,
 				err,
 			)
-			return err
+			return c.Status, err
 		}
 	}
 
@@ -176,7 +177,7 @@ func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) erro
 		SuccessSync,
 		MessageSuccessSync,
 	)
-	return nil
+	return c.Status, nil
 }
 
 func NextAction(c *v1alpha1.CassandraCluster) controllers.Action {
