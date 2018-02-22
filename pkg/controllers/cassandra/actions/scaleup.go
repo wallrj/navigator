@@ -31,10 +31,10 @@ func (a *ScaleOut) Execute(s *controllers.State) error {
 		_, err = s.Clientset.AppsV1beta1().StatefulSets(ss.Namespace).Update(ss)
 		return err
 	}
-	if *ss.Spec.Replicas >= a.NodePool.Replicas {
+	if *ss.Spec.Replicas > a.NodePool.Replicas {
 		return fmt.Errorf(
 			"the NodePool.Replicas value (%d) "+
-				"is less than or equal to the existing StatefulSet.Replicas value (%d)",
+				"is less than the existing StatefulSet.Replicas value (%d)",
 			a.NodePool.Replicas, *ss.Spec.Replicas,
 		)
 	}
