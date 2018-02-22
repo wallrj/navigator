@@ -128,6 +128,9 @@ func AssertStatefulSetMatches(t *testing.T, expected StatefulSetConfig, actual *
 	if actual.Namespace != expected.Namespace {
 		t.Errorf("Namespace %q != %q", actual.Namespace, expected.Namespace)
 	}
+	if actual.Spec.Replicas != expected.Replicas {
+		t.Errorf("Replicas %#v != %#v", actual.Spec.Replicas, expected.Replicas)
+	}
 }
 
 type CassandraClusterConfig struct {
@@ -144,11 +147,13 @@ func CassandraCluster(c CassandraClusterConfig) *v1alpha1.CassandraCluster {
 }
 
 type CassandraClusterNodePoolConfig struct {
-	Name string
+	Name     string
+	Replicas int32
 }
 
 func CassandraClusterNodePool(c CassandraClusterNodePoolConfig) *v1alpha1.CassandraClusterNodePool {
 	return &v1alpha1.CassandraClusterNodePool{
-		Name: c.Name,
+		Name:     c.Name,
+		Replicas: c.Replicas,
 	}
 }

@@ -97,5 +97,4 @@ func TestCreateNodePool(t *testing.T) {
 			},
 		)
 	}
-
 }

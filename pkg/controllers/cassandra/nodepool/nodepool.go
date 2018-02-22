@@ -38,6 +38,7 @@ func NewControl(
 func (e *defaultCassandraClusterNodepoolControl) clusterStatefulSets(
 	cluster *v1alpha1.CassandraCluster,
 ) (results map[string]*v1beta1.StatefulSet, err error) {
+	results = map[string]*v1beta1.StatefulSet{}
 	lister := e.statefulSetLister.StatefulSets(cluster.Namespace)
 	selector, err := util.SelectorForCluster(cluster)
 	if err != nil {
@@ -74,7 +75,8 @@ func (e *defaultCassandraClusterNodepoolControl) Sync(cluster *v1alpha1.Cassandr
 	nodePoolNames := sets.NewString()
 	for _, np := range cluster.Spec.NodePools {
 		nodePoolNames.Insert(np.Name)
-		ss, setFound := ssList[np.Name]
+		ssName := util.NodePoolResourceName(cluster, &np)
+		ss, setFound := ssList[ssName]
 		nps, npsFound := cluster.Status.NodePools[np.Name]
 		if setFound {
 			if !npsFound {

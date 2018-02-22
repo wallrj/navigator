@@ -181,18 +181,20 @@ func (f *Fixture) setupAndSync() (v1alpha1.CassandraClusterStatus, error) {
 	return c.Sync(f.Cluster)
 }
 
-func (f *Fixture) Run() {
-	_, err := f.setupAndSync()
+func (f *Fixture) Run() v1alpha1.CassandraClusterStatus {
+	status, err := f.setupAndSync()
 	if err != nil {
 		f.t.Error(err)
 	}
+	return status
 }
 
-func (f *Fixture) RunExpectError() {
-	_, err := f.setupAndSync()
+func (f *Fixture) RunExpectError() v1alpha1.CassandraClusterStatus {
+	status, err := f.setupAndSync()
 	if err == nil {
 		f.t.Error("Sync was expected to return an error. Got nil.")
 	}
+	return status
 }
 
 func (f *Fixture) Services() *v1.ServiceList {
