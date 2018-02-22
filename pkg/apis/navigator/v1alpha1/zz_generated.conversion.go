@@ -188,7 +188,7 @@ func Convert_navigator_CassandraClusterNodePool_To_v1alpha1_CassandraClusterNode
 }
 
 func autoConvert_v1alpha1_CassandraClusterNodePoolStatus_To_navigator_CassandraClusterNodePoolStatus(in *CassandraClusterNodePoolStatus, out *navigator.CassandraClusterNodePoolStatus, s conversion.Scope) error {
-	out.ReadyReplicas = in.ReadyReplicas
+	out.ReadyReplicas = int32(in.ReadyReplicas)
 	return nil
 }
 
@@ -198,7 +198,7 @@ func Convert_v1alpha1_CassandraClusterNodePoolStatus_To_navigator_CassandraClust
 }
 
 func autoConvert_navigator_CassandraClusterNodePoolStatus_To_v1alpha1_CassandraClusterNodePoolStatus(in *navigator.CassandraClusterNodePoolStatus, out *CassandraClusterNodePoolStatus, s conversion.Scope) error {
-	out.ReadyReplicas = in.ReadyReplicas
+	out.ReadyReplicas = int64(in.ReadyReplicas)
 	return nil
 }
 
@@ -240,7 +240,19 @@ func Convert_navigator_CassandraClusterSpec_To_v1alpha1_CassandraClusterSpec(in 
 }
 
 func autoConvert_v1alpha1_CassandraClusterStatus_To_navigator_CassandraClusterStatus(in *CassandraClusterStatus, out *navigator.CassandraClusterStatus, s conversion.Scope) error {
-	out.NodePools = *(*map[string]navigator.CassandraClusterNodePoolStatus)(unsafe.Pointer(&in.NodePools))
+	if in.NodePools != nil {
+		in, out := &in.NodePools, &out.NodePools
+		*out = make(map[string]navigator.CassandraClusterNodePoolStatus, len(*in))
+		for key, val := range *in {
+			newVal := new(navigator.CassandraClusterNodePoolStatus)
+			if err := Convert_v1alpha1_CassandraClusterNodePoolStatus_To_navigator_CassandraClusterNodePoolStatus(&val, newVal, s); err != nil {
+				return err
+			}
+			(*out)[key] = *newVal
+		}
+	} else {
+		out.NodePools = nil
+	}
 	return nil
 }
 
@@ -250,7 +262,19 @@ func Convert_v1alpha1_CassandraClusterStatus_To_navigator_CassandraClusterStatus
 }
 
 func autoConvert_navigator_CassandraClusterStatus_To_v1alpha1_CassandraClusterStatus(in *navigator.CassandraClusterStatus, out *CassandraClusterStatus, s conversion.Scope) error {
-	out.NodePools = *(*map[string]CassandraClusterNodePoolStatus)(unsafe.Pointer(&in.NodePools))
+	if in.NodePools != nil {
+		in, out := &in.NodePools, &out.NodePools
+		*out = make(map[string]CassandraClusterNodePoolStatus, len(*in))
+		for key, val := range *in {
+			newVal := new(CassandraClusterNodePoolStatus)
+			if err := Convert_navigator_CassandraClusterNodePoolStatus_To_v1alpha1_CassandraClusterNodePoolStatus(&val, newVal, s); err != nil {
+				return err
+			}
+			(*out)[key] = *newVal
+		}
+	} else {
+		out.NodePools = nil
+	}
 	return nil
 }
 
