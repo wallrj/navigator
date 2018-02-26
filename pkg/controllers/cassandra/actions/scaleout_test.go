@@ -87,6 +87,31 @@ func TestScaleOut(t *testing.T) {
 			},
 			expectedErr: true,
 		},
+		"Idempotent: No error if ReplicaCount already matches the actual ReplicaCount": {
+			kubeObjects: []runtime.Object{
+				generate.StatefulSet(
+					generate.StatefulSetConfig{
+						Name:      "cass-cluster1-pool1",
+						Namespace: "ns1",
+						Replicas:  int32Ptr(124),
+					},
+				),
+			},
+			cluster: generate.CassandraClusterConfig{
+				Name:      "cluster1",
+				Namespace: "ns1",
+			},
+			nodePool: generate.CassandraClusterNodePoolConfig{
+				Name:     "pool1",
+				Replicas: 124,
+			},
+			expectedStatefulSet: &generate.StatefulSetConfig{
+				Name:      "cass-cluster1-pool1",
+				Namespace: "ns1",
+				Replicas:  int32Ptr(124),
+			},
+			expectedErr: false,
+		},
 		"The replicas count is incremented": {
 			kubeObjects: []runtime.Object{
 				generate.StatefulSet(

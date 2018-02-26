@@ -54,7 +54,7 @@ func TestCreateNodePool(t *testing.T) {
 				Namespace: "ns1",
 				Replicas:  int32Ptr(10),
 			},
-			expectedErr: true,
+			expectedErr: false,
 		},
 	}
 
