@@ -1,10 +1,11 @@
 package actions
 
 import (
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+
 	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/nodepool"
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 )
 
 type CreateNodePool struct {
