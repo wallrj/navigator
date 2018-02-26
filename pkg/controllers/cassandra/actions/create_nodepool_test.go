@@ -35,7 +35,7 @@ func TestCreateNodePool(t *testing.T) {
 				Replicas:  int32Ptr(0),
 			},
 		},
-		"An error is returned if the statefulset already exists": {
+		"Idempotent: CreateNodePool can be executed again without error": {
 			kubeObjects: []runtime.Object{
 				generate.StatefulSet(
 					generate.StatefulSetConfig{

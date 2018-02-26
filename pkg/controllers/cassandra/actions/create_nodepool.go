@@ -26,8 +26,5 @@ func (a *CreateNodePool) Execute(s *controllers.State) error {
 	if k8sErrors.IsAlreadyExists(err) {
 		return nil
 	}
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
