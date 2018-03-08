@@ -332,16 +332,32 @@ function test_cassandracluster() {
         fail_test "First cassandra node not marked as seed"
     fi
 
-    simulate_unresponsive_cassandra_process \
-        "${namespace}" \
-        "cass-${CASS_NAME}-ringnodes-0" \
-        "cassandra"
-
-    if ! retry cql_connect \
+    if ! retry \
+         stdout_matches "testvalue1" \
+         cql_connect \
          "${namespace}" \
          "cass-${CASS_NAME}-seeds" \
-         9042; then
-        fail_test "Cassandra readiness probe failed to bypass dead node"
+         9042 \
+         --debug \
+         --execute='CONSISTENCY ALL; SELECT * FROM space1.testtable1'
+    then
+        fail_test "Data was not replicated to second node"
+    fi
+
+    simulate_unresponsive_cassandra_process \
+        "${namespace}" \
+        "cass-${CASS_NAME}-ringnodes-0"
+
+    if ! retry TIMEOUT=300 \
+            stdout_matches "testvalue1" \
+            cql_connect \
+            "${namespace}" \
+            "cass-${CASS_NAME}-seeds" \
+            9042 \
+            --debug \
+            --execute='CONSISTENCY ALL; SELECT * FROM space1.testtable1'
+    then
+        fail_test "Cassandra liveness probe failed to restart dead node"
     fi
 }
 
