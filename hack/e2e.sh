@@ -196,7 +196,6 @@ function test_cassandracluster() {
 
     export CASS_NAME="test"
     export CASS_REPLICAS=1
-    export CASS_CQL_PORT=9042
     export CASS_VERSION="3.11.1"
 
     kubectl create namespace "${namespace}"
@@ -211,7 +210,7 @@ function test_cassandracluster() {
         --namespace "${namespace}" \
         --filename \
         <(envsubst \
-              '$NAVIGATOR_IMAGE_REPOSITORY:$NAVIGATOR_IMAGE_TAG:$NAVIGATOR_IMAGE_PULLPOLICY:$CASS_NAME:$CASS_REPLICAS:$CASS_CQL_PORT:$CASS_VERSION' \
+              '$NAVIGATOR_IMAGE_REPOSITORY:$NAVIGATOR_IMAGE_TAG:$NAVIGATOR_IMAGE_PULLPOLICY:$CASS_NAME:$CASS_REPLICAS:$CASS_VERSION' \
               < "${SCRIPT_DIR}/testdata/cass-cluster-test.template.yaml")
     then
         fail_test "Failed to create cassandracluster"
@@ -239,7 +238,7 @@ function test_cassandracluster() {
     # Wait 5 minutes for cassandra to start and listen for CQL queries.
     if ! retry TIMEOUT=300 cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-cql" \
+         "cass-${CASS_NAME}-seedprovider" \
          9042; then
         fail_test "Navigator controller failed to create cassandracluster service"
     fi
@@ -254,7 +253,7 @@ function test_cassandracluster() {
     # Create a database
     cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-cql" \
+        "cass-${CASS_NAME}-seedprovider" \
         9042 \
         --debug \
         < "${SCRIPT_DIR}/testdata/cassandra_test_database1.cql"
@@ -262,7 +261,7 @@ function test_cassandracluster() {
     # Insert a record
     cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-cql" \
+        "cass-${CASS_NAME}-seedprovider" \
         9042 \
         --debug \
         --execute="INSERT INTO space1.testtable1(key, value) VALUES('testkey1', 'testvalue1')"
@@ -275,7 +274,7 @@ function test_cassandracluster() {
         not \
         cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-cql" \
+        "cass-${CASS_NAME}-seedprovider" \
         9042 \
         --debug
     # Kill the cassandra process gracefully which allows it to flush its data to disk.
@@ -296,29 +295,12 @@ function test_cassandracluster() {
          stdout_matches "testvalue1" \
          cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-cql" \
+         "cass-${CASS_NAME}-seedprovider" \
          9042 \
          --debug \
          --execute='SELECT * FROM space1.testtable1'
     then
         fail_test "Cassandra data was lost"
-    fi
-
-    # Change the CQL port
-    export CASS_CQL_PORT=9043
-    kubectl apply \
-        --namespace "${namespace}" \
-        --filename \
-        <(envsubst \
-              '$NAVIGATOR_IMAGE_REPOSITORY:$NAVIGATOR_IMAGE_TAG:$NAVIGATOR_IMAGE_PULLPOLICY:$CASS_NAME:$CASS_REPLICAS:$CASS_CQL_PORT:$CASS_VERSION' \
-              < "${SCRIPT_DIR}/testdata/cass-cluster-test.template.yaml")
-
-    # Wait 60s for cassandra CQL port to change
-    if ! retry TIMEOUT=60 cql_connect \
-         "${namespace}" \
-         "cass-${CASS_NAME}-cql" \
-         9043; then
-        fail_test "Navigator controller failed to update cassandracluster service"
     fi
 
     # Increment the replica count
@@ -327,7 +309,7 @@ function test_cassandracluster() {
         --namespace "${namespace}" \
         --filename \
         <(envsubst \
-              '$NAVIGATOR_IMAGE_REPOSITORY:$NAVIGATOR_IMAGE_TAG:$NAVIGATOR_IMAGE_PULLPOLICY:$CASS_NAME:$CASS_REPLICAS:$CASS_CQL_PORT:$CASS_VERSION' \
+              '$NAVIGATOR_IMAGE_REPOSITORY:$NAVIGATOR_IMAGE_TAG:$NAVIGATOR_IMAGE_PULLPOLICY:$CASS_NAME:$CASS_REPLICAS:$CASS_VERSION' \
               < "${SCRIPT_DIR}/testdata/cass-cluster-test.template.yaml")
 
     if ! retry TIMEOUT=300 stdout_equals 2 kubectl \
@@ -357,8 +339,8 @@ function test_cassandracluster() {
 
     if ! retry cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-cql" \
-         9043; then
+         "cass-${CASS_NAME}-seedprovider" \
+         9042; then
         fail_test "Cassandra readiness probe failed to bypass dead node"
     fi
 }
