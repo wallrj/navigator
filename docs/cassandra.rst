@@ -9,6 +9,28 @@ Example ``CassandraCluster`` resource:
 .. include:: quick-start/cassandra-cluster.yaml
    :literal:
 
+Connecting to Cassandra
+-----------------------
+
+If you apply the manifest above, Navigator will create a Cassandra cluster with three C* nodes,
+running in three Pods.
+
+Navigator will also have created a `headless service <https://kubernetes.io/docs/concepts/services-networking/service/#headless-services>`_ called ``cass-demo-seeds``.
+
+This service has an associated DNS domain name which resolves to the IP addresses of the **all** the `seed nodes <https://docs.datastax.com/en/glossary/doc/glossary/gloss_seed.html>`_ in the Cassandra cluster.
+That DNS name can be resolved from any Pod running in the same namespace as the Cassandra cluster.
+
+For example, you could use the Datastax Python client to connect to the Cassandra cluster as follows:
+
+.. code-block:: python
+
+   from cassandra.cluster import Cluster
+
+   cluster = Cluster(['cass-demo-seeds'])
+
+The client library will connect to one of the seed nodes and from there discover the IP addresses of the whole cluster.
+
+--------------------------------------------
 Cassandra Across Multiple Availability Zones
 --------------------------------------------
 
