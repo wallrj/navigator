@@ -238,7 +238,7 @@ function test_cassandracluster() {
     # Wait 5 minutes for cassandra to start and listen for CQL queries.
     if ! retry TIMEOUT=300 cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-seedprovider" \
+         "cass-${CASS_NAME}-seeds" \
          9042; then
         fail_test "Navigator controller failed to create cassandracluster service"
     fi
@@ -246,14 +246,14 @@ function test_cassandracluster() {
     if ! retry TIMEOUT=300 in_cluster_command \
         "${namespace}" \
         "alpine:3.6" \
-        /bin/sh -c "apk add --no-cache curl && curl -vv http://cass-${CASS_NAME}-ringnodes-0.cass-${CASS_NAME}-seedprovider:8080"; then
+        /bin/sh -c "apk add --no-cache curl && curl -vv http://cass-${CASS_NAME}-ringnodes-0.cass-${CASS_NAME}-seeds:8080"; then
         fail_test "Pilot did not start Prometheus metric exporter"
     fi
 
     # Create a database
     cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-seedprovider" \
+        "cass-${CASS_NAME}-seeds" \
         9042 \
         --debug \
         < "${SCRIPT_DIR}/testdata/cassandra_test_database1.cql"
@@ -261,7 +261,7 @@ function test_cassandracluster() {
     # Insert a record
     cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-seedprovider" \
+        "cass-${CASS_NAME}-seeds" \
         9042 \
         --debug \
         --execute="INSERT INTO space1.testtable1(key, value) VALUES('testkey1', 'testvalue1')"
@@ -274,7 +274,7 @@ function test_cassandracluster() {
         not \
         cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-seedprovider" \
+        "cass-${CASS_NAME}-seeds" \
         9042 \
         --debug
     # Kill the cassandra process gracefully which allows it to flush its data to disk.
@@ -295,7 +295,7 @@ function test_cassandracluster() {
          stdout_matches "testvalue1" \
          cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-seedprovider" \
+         "cass-${CASS_NAME}-seeds" \
          9042 \
          --debug \
          --execute='SELECT * FROM space1.testtable1'
@@ -323,7 +323,7 @@ function test_cassandracluster() {
 
     # TODO: A better test would be to query the endpoints and check that only
     # the `-0` pods are included. E.g.
-    # kubectl -n test-cassandra-1519754828-19864 get ep cass-cassandra-1519754828-19864-cassandra-seedprovider -o "jsonpath={.subsets[*].addresses[*].hostname}"
+    # kubectl -n test-cassandra-1519754828-19864 get ep cass-cassandra-1519754828-19864-cassandra-seeds -o "jsonpath={.subsets[*].addresses[*].hostname}"
     if ! stdout_equals "cass-${CASS_NAME}-ringnodes-0" \
          kubectl get pods --namespace "${namespace}" \
          --selector=navigator.jetstack.io/cassandra-seed=true \
@@ -339,7 +339,7 @@ function test_cassandracluster() {
 
     if ! retry cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-seedprovider" \
+         "cass-${CASS_NAME}-seeds" \
          9042; then
         fail_test "Cassandra readiness probe failed to bypass dead node"
     fi

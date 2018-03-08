@@ -38,7 +38,7 @@ func NodePoolResourceName(c *v1alpha1.CassandraCluster, np *v1alpha1.CassandraCl
 }
 
 func SeedProviderServiceName(c *v1alpha1.CassandraCluster) string {
-	return fmt.Sprintf("%s-seedprovider", ResourceBaseName(c))
+	return fmt.Sprintf("%s-seeds", ResourceBaseName(c))
 }
 
 func ServiceAccountName(c *v1alpha1.CassandraCluster) string {
