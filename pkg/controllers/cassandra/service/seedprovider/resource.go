@@ -9,9 +9,8 @@ import (
 )
 
 const (
-	TolerateUnreadyEndpointsAnnotationKey = "service.alpha.kubernetes.io/tolerate-unready-endpoints"
-	SeedLabelKey                          = "navigator.jetstack.io/cassandra-seed"
-	SeedLabelValue                        = "true"
+	SeedLabelKey   = "navigator.jetstack.io/cassandra-seed"
+	SeedLabelValue = "true"
 )
 
 func ServiceForCluster(
@@ -41,19 +40,5 @@ func updateServiceForCluster(
 			Port: 65535,
 		},
 	}
-	// This ensures that DNS names are published regardless of whether the
-	// Cassandra pod ReadinessProbes (listening on their CQL port).
-	// It won't handle CQL connections until it has successfully connected and
-	// negotiated with a seed host
-	service.Spec.PublishNotReadyAddresses = true
-	// XXX: This annotation is only necessary for Kubernetes <=1.7, which do not
-	// pay attention to the field above.
-	// Remove it when we no longer support those versions.
-	annotations := service.GetAnnotations()
-	if annotations == nil {
-		annotations = map[string]string{}
-	}
-	annotations[TolerateUnreadyEndpointsAnnotationKey] = "true"
-	service.SetAnnotations(annotations)
 	return service
 }
