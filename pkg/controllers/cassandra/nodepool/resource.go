@@ -166,7 +166,7 @@ func StatefulSetForCluster(
 								},
 								{
 									Name:          "cql",
-									ContainerPort: util.DefaultCqlPort,
+									ContainerPort: int32(9042),
 								},
 								{
 									Name:          "prometheus",

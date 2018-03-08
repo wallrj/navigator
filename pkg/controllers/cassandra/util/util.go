@@ -19,7 +19,6 @@ const (
 	kindName             = "CassandraCluster"
 	ClusterNameLabelKey  = "navigator.jetstack.io/cassandra-cluster-name"
 	NodePoolNameLabelKey = "navigator.jetstack.io/cassandra-node-pool-name"
-	DefaultCqlPort       = 9042
 )
 
 func NewControllerRef(c *v1alpha1.CassandraCluster) metav1.OwnerReference {
@@ -40,10 +39,6 @@ func NodePoolResourceName(c *v1alpha1.CassandraCluster, np *v1alpha1.CassandraCl
 
 func SeedProviderServiceName(c *v1alpha1.CassandraCluster) string {
 	return fmt.Sprintf("%s-seedprovider", ResourceBaseName(c))
-}
-
-func CqlServiceName(c *v1alpha1.CassandraCluster) string {
-	return fmt.Sprintf("%s-cql", ResourceBaseName(c))
 }
 
 func ServiceAccountName(c *v1alpha1.CassandraCluster) string {
