@@ -35,7 +35,6 @@ func StatefulSetForCluster(
 ) *apps.StatefulSet {
 
 	statefulSetName := util.NodePoolResourceName(cluster, np)
-	seedProviderServiceName := util.SeedProviderServiceName(cluster)
 	nodePoolLabels := util.NodePoolLabels(cluster, np.Name)
 
 	image := cassImageToUse(&cluster.Spec)
@@ -49,8 +48,7 @@ func StatefulSetForCluster(
 			OwnerReferences: []metav1.OwnerReference{util.NewControllerRef(cluster)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas:    util.Int32Ptr(int32(np.Replicas)),
-			ServiceName: seedProviderServiceName,
+			Replicas: util.Int32Ptr(int32(np.Replicas)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: nodePoolLabels,
 			},
@@ -197,9 +195,8 @@ func StatefulSetForCluster(
 								{
 									Name: "CASSANDRA_SEEDS",
 									Value: fmt.Sprintf(
-										"%s-0.%s.%s.svc.cluster.local",
+										"%s-0.%s.svc.cluster.local",
 										statefulSetName,
-										seedProviderServiceName,
 										cluster.Namespace,
 									),
 								},
@@ -209,7 +206,7 @@ func StatefulSetForCluster(
 								},
 								{
 									Name:  "CASSANDRA_SERVICE",
-									Value: seedProviderServiceName,
+									Value: util.SeedProviderServiceName(cluster),
 								},
 								{
 									Name:  "CASSANDRA_CLUSTER_NAME",
