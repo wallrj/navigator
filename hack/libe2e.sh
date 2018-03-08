@@ -109,8 +109,8 @@ function kube_event_exists() {
 }
 
 function decommission_cassandra_node() {
-    local namespace=$1
-    local pod=$2
+    local namespace="${1}"
+    local pod="${2}"
     kubectl \
         --namespace="${namespace}" \
         exec "${pod}" -- \
@@ -118,9 +118,9 @@ function decommission_cassandra_node() {
 }
 
 function signal_cassandra_process() {
-    local namespace=$1
-    local pod=$2
-    local signal=$4
+    local namespace="${1}"
+    local pod="${2}"
+    local signal="${3}"
 
     # Send STOP signal to all the cassandra user's processes
     kubectl \
@@ -130,8 +130,8 @@ function signal_cassandra_process() {
 }
 
 function simulate_unresponsive_cassandra_process() {
-    local namespace=$1
-    local pod=$2
+    local namespace="${1}"
+    local pod="${2}"
     signal_cassandra_process "${namespace}" "${pod}" "SIGSTOP"
 }
 
