@@ -6,6 +6,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1beta1"
 
 	navinformers "github.com/jetstack/navigator/pkg/client/informers/externalversions"
+	"github.com/jetstack/navigator/pkg/controllers"
 
 	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra"
@@ -78,7 +79,7 @@ func (f *Fixture) AddObjectN(o runtime.Object) {
 	f.naviObjects = append(f.naviObjects, o)
 }
 
-func (f *Fixture) setupAndSync() error {
+func (f *Fixture) setupAndSync() (v1alpha1.CassandraClusterStatus, error) {
 	recorder := record.NewFakeRecorder(0)
 	finished := make(chan struct{})
 	defer func() {
@@ -178,6 +179,11 @@ func (f *Fixture) setupAndSync() error {
 		f.RoleBindingControl,
 		f.SeedLabellerControl,
 		recorder,
+		&controllers.State{
+			Clientset:         f.k8sClient,
+			StatefulSetLister: statefulSets,
+			Recorder:          recorder,
+		},
 	)
 	stopCh := make(chan struct{})
 	defer close(stopCh)
@@ -198,18 +204,20 @@ func (f *Fixture) setupAndSync() error {
 	return c.Sync(f.Cluster)
 }
 
-func (f *Fixture) Run() {
-	err := f.setupAndSync()
+func (f *Fixture) Run() v1alpha1.CassandraClusterStatus {
+	status, err := f.setupAndSync()
 	if err != nil {
 		f.t.Error(err)
 	}
+	return status
 }
 
-func (f *Fixture) RunExpectError() {
-	err := f.setupAndSync()
+func (f *Fixture) RunExpectError() v1alpha1.CassandraClusterStatus {
+	status, err := f.setupAndSync()
 	if err == nil {
 		f.t.Error("Sync was expected to return an error. Got nil.")
 	}
+	return status
 }
 
 func (f *Fixture) Services() *v1.ServiceList {

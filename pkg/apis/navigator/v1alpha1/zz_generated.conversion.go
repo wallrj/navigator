@@ -164,7 +164,7 @@ func Convert_navigator_CassandraClusterList_To_v1alpha1_CassandraClusterList(in 
 
 func autoConvert_v1alpha1_CassandraClusterNodePool_To_navigator_CassandraClusterNodePool(in *CassandraClusterNodePool, out *navigator.CassandraClusterNodePool, s conversion.Scope) error {
 	out.Name = in.Name
-	out.Replicas = in.Replicas
+	out.Replicas = int64(in.Replicas)
 	if err := Convert_v1alpha1_PersistenceConfig_To_navigator_PersistenceConfig(&in.Persistence, &out.Persistence, s); err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func Convert_v1alpha1_CassandraClusterNodePool_To_navigator_CassandraClusterNode
 
 func autoConvert_navigator_CassandraClusterNodePool_To_v1alpha1_CassandraClusterNodePool(in *navigator.CassandraClusterNodePool, out *CassandraClusterNodePool, s conversion.Scope) error {
 	out.Name = in.Name
-	out.Replicas = in.Replicas
+	out.Replicas = int32(in.Replicas)
 	if err := Convert_navigator_PersistenceConfig_To_v1alpha1_PersistenceConfig(&in.Persistence, &out.Persistence, s); err != nil {
 		return err
 	}
@@ -224,7 +224,17 @@ func autoConvert_v1alpha1_CassandraClusterSpec_To_navigator_CassandraClusterSpec
 	if err := Convert_v1alpha1_NavigatorClusterConfig_To_navigator_NavigatorClusterConfig(&in.NavigatorClusterConfig, &out.NavigatorClusterConfig, s); err != nil {
 		return err
 	}
-	out.NodePools = *(*[]navigator.CassandraClusterNodePool)(unsafe.Pointer(&in.NodePools))
+	if in.NodePools != nil {
+		in, out := &in.NodePools, &out.NodePools
+		*out = make([]navigator.CassandraClusterNodePool, len(*in))
+		for i := range *in {
+			if err := Convert_v1alpha1_CassandraClusterNodePool_To_navigator_CassandraClusterNodePool(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.NodePools = nil
+	}
 	out.Image = (*navigator.ImageSpec)(unsafe.Pointer(in.Image))
 	out.Version = in.Version
 	return nil
@@ -239,7 +249,17 @@ func autoConvert_navigator_CassandraClusterSpec_To_v1alpha1_CassandraClusterSpec
 	if err := Convert_navigator_NavigatorClusterConfig_To_v1alpha1_NavigatorClusterConfig(&in.NavigatorClusterConfig, &out.NavigatorClusterConfig, s); err != nil {
 		return err
 	}
-	out.NodePools = *(*[]CassandraClusterNodePool)(unsafe.Pointer(&in.NodePools))
+	if in.NodePools != nil {
+		in, out := &in.NodePools, &out.NodePools
+		*out = make([]CassandraClusterNodePool, len(*in))
+		for i := range *in {
+			if err := Convert_navigator_CassandraClusterNodePool_To_v1alpha1_CassandraClusterNodePool(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.NodePools = nil
+	}
 	out.Version = in.Version
 	out.Image = (*ImageSpec)(unsafe.Pointer(in.Image))
 	return nil

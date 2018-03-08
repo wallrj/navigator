@@ -1,7 +1,9 @@
 package nodepool
 
 import (
-	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/api/apps/v1beta1"
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	"k8s.io/client-go/kubernetes"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
 	"k8s.io/client-go/tools/record"
@@ -34,77 +36,65 @@ func NewControl(
 	}
 }
 
-func (e *defaultCassandraClusterNodepoolControl) removeUnusedStatefulSets(
+func (e *defaultCassandraClusterNodepoolControl) clusterStatefulSets(
 	cluster *v1alpha1.CassandraCluster,
-) error {
-	expectedStatefulSetNames := map[string]bool{}
-	for _, pool := range cluster.Spec.NodePools {
-		name := util.NodePoolResourceName(cluster, &pool)
-		expectedStatefulSetNames[name] = true
-	}
-	client := e.kubeClient.AppsV1beta1().StatefulSets(cluster.Namespace)
+) (results map[string]*v1beta1.StatefulSet, err error) {
+	results = map[string]*v1beta1.StatefulSet{}
 	lister := e.statefulSetLister.StatefulSets(cluster.Namespace)
 	selector, err := util.SelectorForCluster(cluster)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	existingSets, err := lister.List(selector)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, set := range existingSets {
 		err := util.OwnerCheck(set, cluster)
 		if err != nil {
-			return err
+			continue
 		}
-		_, found := expectedStatefulSetNames[set.Name]
-		if !found {
-			err := client.Delete(set.Name, nil)
-			if err != nil {
-				return err
+		results[set.Name] = set
+	}
+	return results, nil
+}
+
+// Add a NodePoolStatus for each NodePool, only if a corresponding StatefulSet is found.
+// Update the NodePoolStatus for each NodePool, using values from the corresponding StatefulSet.
+// Remove the NodePoolStatus for NodePools that do not have a StatefulSet
+// (the statefulset has been deleted unexpectedly)
+// Remove the NodePoolStatus if there is no corresponding NodePool.
+// (the statefulset has been removed by a DeleteNodePool action - not yet implemented)
+func (e *defaultCassandraClusterNodepoolControl) Sync(cluster *v1alpha1.CassandraCluster) error {
+	if cluster.Status.NodePools == nil {
+		cluster.Status.NodePools = map[string]v1alpha1.CassandraClusterNodePoolStatus{}
+	}
+	ssList, err := e.clusterStatefulSets(cluster)
+	if err != nil {
+		return err
+	}
+	nodePoolNames := sets.NewString()
+	for _, np := range cluster.Spec.NodePools {
+		nodePoolNames.Insert(np.Name)
+		ssName := util.NodePoolResourceName(cluster, &np)
+		ss, setFound := ssList[ssName]
+		nps, npsFound := cluster.Status.NodePools[np.Name]
+		if setFound {
+			if !npsFound {
+				cluster.Status.NodePools[np.Name] = nps
 			}
+			if nps.ReadyReplicas != ss.Status.ReadyReplicas {
+				nps.ReadyReplicas = ss.Status.ReadyReplicas
+				cluster.Status.NodePools[np.Name] = nps
+			}
+		} else {
+			delete(cluster.Status.NodePools, np.Name)
+		}
+	}
+	for npName := range cluster.Status.NodePools {
+		if !nodePoolNames.Has(npName) {
+			delete(cluster.Status.NodePools, npName)
 		}
 	}
 	return nil
-}
-
-func (e *defaultCassandraClusterNodepoolControl) createOrUpdateStatefulSet(
-	cluster *v1alpha1.CassandraCluster,
-	nodePool *v1alpha1.CassandraClusterNodePool,
-) error {
-	desiredSet := StatefulSetForCluster(cluster, nodePool)
-	client := e.kubeClient.AppsV1beta1().StatefulSets(cluster.Namespace)
-	lister := e.statefulSetLister.StatefulSets(desiredSet.Namespace)
-	existingSet, err := lister.Get(desiredSet.Name)
-	if k8sErrors.IsNotFound(err) {
-		_, err = client.Create(desiredSet)
-		return err
-	}
-	if err != nil {
-		return err
-	}
-	err = util.OwnerCheck(existingSet, cluster)
-	if err != nil {
-		return err
-	}
-
-	_, err = client.Update(desiredSet)
-	return err
-}
-
-func (e *defaultCassandraClusterNodepoolControl) syncStatefulSets(
-	cluster *v1alpha1.CassandraCluster,
-) error {
-	for _, pool := range cluster.Spec.NodePools {
-		err := e.createOrUpdateStatefulSet(cluster, &pool)
-		if err != nil {
-			return err
-		}
-	}
-	err := e.removeUnusedStatefulSets(cluster)
-	return err
-}
-
-func (e *defaultCassandraClusterNodepoolControl) Sync(cluster *v1alpha1.CassandraCluster) error {
-	return e.syncStatefulSets(cluster)
 }

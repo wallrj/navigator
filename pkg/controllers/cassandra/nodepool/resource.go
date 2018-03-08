@@ -33,7 +33,6 @@ func StatefulSetForCluster(
 	cluster *v1alpha1.CassandraCluster,
 	np *v1alpha1.CassandraClusterNodePool,
 ) *apps.StatefulSet {
-
 	statefulSetName := util.NodePoolResourceName(cluster, np)
 	nodePoolLabels := util.NodePoolLabels(cluster, np.Name)
 
@@ -48,7 +47,7 @@ func StatefulSetForCluster(
 			OwnerReferences: []metav1.OwnerReference{util.NewControllerRef(cluster)},
 		},
 		Spec: apps.StatefulSetSpec{
-			Replicas: util.Int32Ptr(int32(np.Replicas)),
+			Replicas: util.Int32Ptr(int32(0)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: nodePoolLabels,
 			},
@@ -302,6 +301,7 @@ func StatefulSetForCluster(
 			},
 		)
 	}
+
 	return set
 }
 
