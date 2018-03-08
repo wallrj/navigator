@@ -222,7 +222,6 @@ func autoConvert_v1alpha1_CassandraClusterSpec_To_navigator_CassandraClusterSpec
 	}
 	out.NodePools = *(*[]navigator.CassandraClusterNodePool)(unsafe.Pointer(&in.NodePools))
 	out.Image = (*navigator.ImageSpec)(unsafe.Pointer(in.Image))
-	out.CqlPort = in.CqlPort
 	out.Version = in.Version
 	return nil
 }
@@ -239,7 +238,6 @@ func autoConvert_navigator_CassandraClusterSpec_To_v1alpha1_CassandraClusterSpec
 	out.NodePools = *(*[]CassandraClusterNodePool)(unsafe.Pointer(&in.NodePools))
 	out.Version = in.Version
 	out.Image = (*ImageSpec)(unsafe.Pointer(in.Image))
-	out.CqlPort = in.CqlPort
 	return nil
 }
 
