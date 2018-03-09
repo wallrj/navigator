@@ -29,6 +29,7 @@ import (
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/role"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/rolebinding"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/seedlabeller"
+	servicenodes "github.com/jetstack/navigator/pkg/controllers/cassandra/service/nodes"
 	serviceseedprovider "github.com/jetstack/navigator/pkg/controllers/cassandra/service/seedprovider"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/serviceaccount"
 )
@@ -98,6 +99,11 @@ func NewCassandra(
 	cc.roleBindingsListerSynced = roleBindings.Informer().HasSynced
 	cc.control = NewControl(
 		serviceseedprovider.NewControl(
+			kubeClient,
+			services.Lister(),
+			recorder,
+		),
+		servicenodes.NewControl(
 			kubeClient,
 			services.Lister(),
 			recorder,

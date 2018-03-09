@@ -11,6 +11,7 @@ import (
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/role"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/rolebinding"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/seedlabeller"
+	servicenodes "github.com/jetstack/navigator/pkg/controllers/cassandra/service/nodes"
 	serviceseedprovider "github.com/jetstack/navigator/pkg/controllers/cassandra/service/seedprovider"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/serviceaccount"
 )
@@ -39,6 +40,7 @@ var _ ControlInterface = &defaultCassandraClusterControl{}
 
 type defaultCassandraClusterControl struct {
 	seedProviderServiceControl serviceseedprovider.Interface
+	nodesServiceControl        servicenodes.Interface
 	nodepoolControl            nodepool.Interface
 	pilotControl               pilot.Interface
 	serviceAccountControl      serviceaccount.Interface
@@ -50,6 +52,7 @@ type defaultCassandraClusterControl struct {
 
 func NewControl(
 	seedProviderServiceControl serviceseedprovider.Interface,
+	nodesServiceControl servicenodes.Interface,
 	nodepoolControl nodepool.Interface,
 	pilotControl pilot.Interface,
 	serviceAccountControl serviceaccount.Interface,
@@ -60,6 +63,7 @@ func NewControl(
 ) ControlInterface {
 	return &defaultCassandraClusterControl{
 		seedProviderServiceControl: seedProviderServiceControl,
+		nodesServiceControl:        nodesServiceControl,
 		nodepoolControl:            nodepoolControl,
 		pilotControl:               pilotControl,
 		serviceAccountControl:      serviceAccountControl,
@@ -73,6 +77,17 @@ func NewControl(
 func (e *defaultCassandraClusterControl) Sync(c *v1alpha1.CassandraCluster) error {
 	glog.V(4).Infof("defaultCassandraClusterControl.Sync")
 	err := e.seedProviderServiceControl.Sync(c)
+	if err != nil {
+		e.recorder.Eventf(
+			c,
+			apiv1.EventTypeWarning,
+			ErrorSync,
+			MessageErrorSyncService,
+			err,
+		)
+		return err
+	}
+	err = e.nodesServiceControl.Sync(c)
 	if err != nil {
 		e.recorder.Eventf(
 			c,
