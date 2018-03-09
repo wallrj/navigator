@@ -11,12 +11,18 @@ import (
 	casstesting "github.com/jetstack/navigator/pkg/controllers/cassandra/testing"
 )
 
+func newFixture(t *testing.T) *casstesting.Fixture {
+	f := casstesting.NewFixture(t)
+	f.NodesServiceControl = &casstesting.FakeControl{}
+	return f
+}
+
 func newService(f *casstesting.Fixture) *apiv1.Service {
 	return seedprovider.ServiceForCluster(f.Cluster)
 }
 
 func TestSeedProviderServiceSync(t *testing.T) {
-	servicetesting.RunStandardServiceTests(t, casstesting.NewFixture, newService)
+	servicetesting.RunStandardServiceTests(t, newFixture, newService)
 	t.Run(
 		"sync error",
 		func(t *testing.T) {

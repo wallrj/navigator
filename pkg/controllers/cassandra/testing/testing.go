@@ -14,6 +14,7 @@ import (
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/role"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/rolebinding"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/seedlabeller"
+	servicenodes "github.com/jetstack/navigator/pkg/controllers/cassandra/service/nodes"
 	serviceseedprovider "github.com/jetstack/navigator/pkg/controllers/cassandra/service/seedprovider"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/serviceaccount"
 
@@ -50,6 +51,7 @@ type Fixture struct {
 	t                          *testing.T
 	Cluster                    *v1alpha1.CassandraCluster
 	SeedProviderServiceControl serviceseedprovider.Interface
+	NodesServiceControl        servicenodes.Interface
 	NodepoolControl            nodepool.Interface
 	PilotControl               pilot.Interface
 	ServiceAccountControl      serviceaccount.Interface
@@ -96,6 +98,9 @@ func (f *Fixture) setupAndSync() error {
 	services := k8sFactory.Core().V1().Services().Lister()
 	if f.SeedProviderServiceControl == nil {
 		f.SeedProviderServiceControl = serviceseedprovider.NewControl(f.k8sClient, services, recorder)
+	}
+	if f.NodesServiceControl == nil {
+		f.NodesServiceControl = servicenodes.NewControl(f.k8sClient, services, recorder)
 	}
 	statefulSets := k8sFactory.Apps().V1beta1().StatefulSets().Lister()
 	pods := k8sFactory.Core().V1().Pods().Lister()
@@ -156,6 +161,7 @@ func (f *Fixture) setupAndSync() error {
 
 	c := cassandra.NewControl(
 		f.SeedProviderServiceControl,
+		f.NodesServiceControl,
 		f.NodepoolControl,
 		f.PilotControl,
 		f.ServiceAccountControl,
