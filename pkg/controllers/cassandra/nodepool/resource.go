@@ -193,14 +193,6 @@ func StatefulSetForCluster(
 									Value: "100M",
 								},
 								{
-									Name: "CASSANDRA_SEEDS",
-									Value: fmt.Sprintf(
-										"%s-0.%s.svc.cluster.local",
-										statefulSetName,
-										cluster.Namespace,
-									),
-								},
-								{
 									Name:  "CASSANDRA_ENDPOINT_SNITCH",
 									Value: cassSnitch,
 								},
