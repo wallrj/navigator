@@ -6,9 +6,10 @@ import (
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/golang/glog"
-	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
 	apiv1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
 
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
