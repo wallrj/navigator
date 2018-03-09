@@ -1,4 +1,4 @@
-package nodes_test
+package service_test
 
 import (
 	"testing"
@@ -11,11 +11,13 @@ import (
 	"github.com/jetstack/navigator/internal/test/unit/framework"
 	v1alpha1 "github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers"
-	"github.com/jetstack/navigator/pkg/controllers/cassandra/service/nodes"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/service"
 )
 
 func TestSync(t *testing.T) {
 	cluster1 := casstesting.ClusterForTest()
+	service1 := service.NodesServiceForCluster(cluster1)
+	serviceFactory := service.NodesServiceForCluster
 
 	type testT struct {
 		kubeObjects        []runtime.Object
@@ -30,7 +32,7 @@ func TestSync(t *testing.T) {
 		"create service": {
 			cluster: cluster1,
 			assertions: func(t *testing.T, state *controllers.State, test testT) {
-				expectedService := nodes.ServiceForCluster(cluster1)
+				expectedService := service1
 				_, err := state.Clientset.
 					CoreV1().
 					Services(expectedService.Namespace).
@@ -42,15 +44,14 @@ func TestSync(t *testing.T) {
 		},
 
 		"service exists": {
-			kubeObjects: []runtime.Object{nodes.ServiceForCluster(cluster1)},
+			kubeObjects: []runtime.Object{service1},
 			cluster:     cluster1,
 		},
 		"not yet listed": {
 			kubeObjects: []runtime.Object{},
 			cluster:     cluster1,
 			fixtureManipulator: func(t *testing.T, fixture *framework.StateFixture) {
-				service := nodes.ServiceForCluster(cluster1)
-				_, err := fixture.KubeClient().CoreV1().Services(service.Namespace).Create(service)
+				_, err := fixture.KubeClient().CoreV1().Services(service1.Namespace).Create(service1)
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -73,10 +74,11 @@ func TestSync(t *testing.T) {
 					test.fixtureManipulator(t, fixture)
 				}
 				state := fixture.State()
-				c := nodes.NewControl(
+				c := service.NewControl(
 					state.Clientset,
 					state.ServiceLister,
 					state.Recorder,
+					serviceFactory,
 				)
 				err := c.Sync(test.cluster)
 				if err == nil {

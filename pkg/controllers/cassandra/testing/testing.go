@@ -14,8 +14,7 @@ import (
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/role"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/rolebinding"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/seedlabeller"
-	servicenodes "github.com/jetstack/navigator/pkg/controllers/cassandra/service/nodes"
-	serviceseedprovider "github.com/jetstack/navigator/pkg/controllers/cassandra/service/seedprovider"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/service"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/serviceaccount"
 
 	"k8s.io/api/core/v1"
@@ -50,8 +49,8 @@ func ClusterForTest() *v1alpha1.CassandraCluster {
 type Fixture struct {
 	t                          *testing.T
 	Cluster                    *v1alpha1.CassandraCluster
-	SeedProviderServiceControl serviceseedprovider.Interface
-	NodesServiceControl        servicenodes.Interface
+	SeedProviderServiceControl cassandra.ControlInterface
+	NodesServiceControl        cassandra.ControlInterface
 	NodepoolControl            nodepool.Interface
 	PilotControl               pilot.Interface
 	ServiceAccountControl      serviceaccount.Interface
@@ -97,10 +96,20 @@ func (f *Fixture) setupAndSync() error {
 
 	services := k8sFactory.Core().V1().Services().Lister()
 	if f.SeedProviderServiceControl == nil {
-		f.SeedProviderServiceControl = serviceseedprovider.NewControl(f.k8sClient, services, recorder)
+		f.SeedProviderServiceControl = service.NewControl(
+			f.k8sClient,
+			services,
+			recorder,
+			service.SeedsServiceForCluster,
+		)
 	}
 	if f.NodesServiceControl == nil {
-		f.NodesServiceControl = servicenodes.NewControl(f.k8sClient, services, recorder)
+		f.NodesServiceControl = service.NewControl(
+			f.k8sClient,
+			services,
+			recorder,
+			service.NodesServiceForCluster,
+		)
 	}
 	statefulSets := k8sFactory.Apps().V1beta1().StatefulSets().Lister()
 	pods := k8sFactory.Core().V1().Pods().Lister()
