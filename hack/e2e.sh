@@ -239,7 +239,7 @@ function test_cassandracluster() {
     # Wait 5 minutes for cassandra to start and listen for CQL queries.
     if ! retry TIMEOUT=300 cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-seeds" \
+         "cass-${CASS_NAME}-nodes" \
          "${CASS_CQL_PORT}"; then
         fail_test "Navigator controller failed to create cassandracluster service"
     fi
@@ -254,7 +254,7 @@ function test_cassandracluster() {
     # Create a database
     cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-seeds" \
+        "cass-${CASS_NAME}-nodes" \
         "${CASS_CQL_PORT}" \
         --debug \
         < "${SCRIPT_DIR}/testdata/cassandra_test_database1.cql"
@@ -262,7 +262,7 @@ function test_cassandracluster() {
     # Insert a record
     cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-seeds" \
+        "cass-${CASS_NAME}-nodes" \
         "${CASS_CQL_PORT}" \
         --debug \
         --execute="INSERT INTO space1.testtable1(key, value) VALUES('testkey1', 'testvalue1')"
@@ -275,7 +275,7 @@ function test_cassandracluster() {
         not \
         cql_connect \
         "${namespace}" \
-        "cass-${CASS_NAME}-seeds" \
+        "cass-${CASS_NAME}-nodes" \
         "${CASS_CQL_PORT}" \
         --debug
     # Kill the cassandra process gracefully which allows it to flush its data to disk.
@@ -296,7 +296,7 @@ function test_cassandracluster() {
          stdout_matches "testvalue1" \
          cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-seeds" \
+         "cass-${CASS_NAME}-nodes" \
          "${CASS_CQL_PORT}" \
          --debug \
          --execute='SELECT * FROM space1.testtable1'
@@ -337,7 +337,7 @@ function test_cassandracluster() {
          stdout_matches "testvalue1" \
          cql_connect \
          "${namespace}" \
-         "cass-${CASS_NAME}-seeds" \
+         "cass-${CASS_NAME}-nodes" \
          "${CASS_CQL_PORT}" \
          --debug \
          --execute='CONSISTENCY ALL; SELECT * FROM space1.testtable1'
@@ -353,7 +353,7 @@ function test_cassandracluster() {
             stdout_matches "testvalue1" \
             cql_connect \
             "${namespace}" \
-            "cass-${CASS_NAME}-seeds" \
+            "cass-${CASS_NAME}-nodes" \
             "${CASS_CQL_PORT}" \
             --debug \
             --execute='CONSISTENCY ALL; SELECT * FROM space1.testtable1'
