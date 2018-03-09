@@ -196,6 +196,7 @@ function test_cassandracluster() {
 
     export CASS_NAME="test"
     export CASS_REPLICAS=1
+    export CASS_CQL_PORT=9042
     export CASS_VERSION="3.11.1"
 
     kubectl create namespace "${namespace}"
@@ -239,7 +240,7 @@ function test_cassandracluster() {
     if ! retry TIMEOUT=300 cql_connect \
          "${namespace}" \
          "cass-${CASS_NAME}-seeds" \
-         9042; then
+         "${CASS_CQL_PORT}"; then
         fail_test "Navigator controller failed to create cassandracluster service"
     fi
 
@@ -254,7 +255,7 @@ function test_cassandracluster() {
     cql_connect \
         "${namespace}" \
         "cass-${CASS_NAME}-seeds" \
-        9042 \
+        "${CASS_CQL_PORT}" \
         --debug \
         < "${SCRIPT_DIR}/testdata/cassandra_test_database1.cql"
 
@@ -262,7 +263,7 @@ function test_cassandracluster() {
     cql_connect \
         "${namespace}" \
         "cass-${CASS_NAME}-seeds" \
-        9042 \
+        "${CASS_CQL_PORT}" \
         --debug \
         --execute="INSERT INTO space1.testtable1(key, value) VALUES('testkey1', 'testvalue1')"
 
@@ -275,7 +276,7 @@ function test_cassandracluster() {
         cql_connect \
         "${namespace}" \
         "cass-${CASS_NAME}-seeds" \
-        9042 \
+        "${CASS_CQL_PORT}" \
         --debug
     # Kill the cassandra process gracefully which allows it to flush its data to disk.
     # kill_cassandra_process \
@@ -296,7 +297,7 @@ function test_cassandracluster() {
          cql_connect \
          "${namespace}" \
          "cass-${CASS_NAME}-seeds" \
-         9042 \
+         "${CASS_CQL_PORT}" \
          --debug \
          --execute='SELECT * FROM space1.testtable1'
     then
@@ -337,7 +338,7 @@ function test_cassandracluster() {
          cql_connect \
          "${namespace}" \
          "cass-${CASS_NAME}-seeds" \
-         9042 \
+         "${CASS_CQL_PORT}" \
          --debug \
          --execute='CONSISTENCY ALL; SELECT * FROM space1.testtable1'
     then
@@ -353,7 +354,7 @@ function test_cassandracluster() {
             cql_connect \
             "${namespace}" \
             "cass-${CASS_NAME}-seeds" \
-            9042 \
+            "${CASS_CQL_PORT}" \
             --debug \
             --execute='CONSISTENCY ALL; SELECT * FROM space1.testtable1'
     then
