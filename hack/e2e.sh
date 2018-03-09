@@ -246,7 +246,7 @@ function test_cassandracluster() {
     if ! retry TIMEOUT=300 in_cluster_command \
         "${namespace}" \
         "alpine:3.6" \
-        /bin/sh -c "apk add --no-cache curl && curl -vv http://cass-${CASS_NAME}-ringnodes-0.cass-${CASS_NAME}-seeds:8080"; then
+        /bin/sh -c "apk add --no-cache curl && curl -vv http://cass-${CASS_NAME}-nodes:8080"; then
         fail_test "Pilot did not start Prometheus metric exporter"
     fi
 
