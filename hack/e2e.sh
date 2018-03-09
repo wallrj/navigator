@@ -348,7 +348,7 @@ function test_cassandracluster() {
         "${namespace}" \
         "cass-${CASS_NAME}-ringnodes-0"
 
-    if ! retry TIMEOUT=300 \
+    if ! retry TIMEOUT=600 \
             stdout_matches "testvalue1" \
             cql_connect \
             "${namespace}" \
