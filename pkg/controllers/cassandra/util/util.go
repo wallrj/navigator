@@ -37,7 +37,7 @@ func NodePoolResourceName(c *v1alpha1.CassandraCluster, np *v1alpha1.CassandraCl
 	return fmt.Sprintf("%s-%s", ResourceBaseName(c), np.Name)
 }
 
-func SeedProviderServiceName(c *v1alpha1.CassandraCluster) string {
+func SeedsServiceName(c *v1alpha1.CassandraCluster) string {
 	return fmt.Sprintf("%s-seeds", ResourceBaseName(c))
 }
 
@@ -73,9 +73,7 @@ func NodePoolLabels(
 	poolName string,
 ) map[string]string {
 	labels := ClusterLabels(c)
-	if poolName != "" {
-		labels[NodePoolNameLabelKey] = poolName
-	}
+	labels[NodePoolNameLabelKey] = poolName
 	return labels
 }
 

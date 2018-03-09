@@ -198,7 +198,7 @@ func StatefulSetForCluster(
 								},
 								{
 									Name:  "CASSANDRA_SERVICE",
-									Value: util.SeedProviderServiceName(cluster),
+									Value: util.SeedsServiceName(cluster),
 								},
 								{
 									Name:  "CASSANDRA_CLUSTER_NAME",

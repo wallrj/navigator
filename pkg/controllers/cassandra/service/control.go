@@ -94,7 +94,7 @@ func SeedsServiceForCluster(cluster *v1alpha1.CassandraCluster) *apiv1.Service {
 	labels := util.ClusterLabels(cluster)
 	service := &apiv1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            fmt.Sprintf("%s-seeds", util.ResourceBaseName(cluster)),
+			Name:            util.SeedsServiceName(cluster),
 			Namespace:       cluster.Namespace,
 			OwnerReferences: []metav1.OwnerReference{util.NewControllerRef(cluster)},
 			Labels:          labels,
