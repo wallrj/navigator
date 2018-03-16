@@ -50,8 +50,8 @@ func ClusterForTest() *v1alpha1.CassandraCluster {
 type Fixture struct {
 	t                          *testing.T
 	Cluster                    *v1alpha1.CassandraCluster
-	SeedProviderServiceControl cassandra.ControlInterface
-	NodesServiceControl        cassandra.ControlInterface
+	SeedProviderServiceControl service.Interface
+	NodesServiceControl        service.Interface
 	NodepoolControl            nodepool.Interface
 	PilotControl               pilot.Interface
 	ServiceAccountControl      serviceaccount.Interface

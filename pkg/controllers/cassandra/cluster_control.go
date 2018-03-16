@@ -13,6 +13,7 @@ import (
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/role"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/rolebinding"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/seedlabeller"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/service"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/serviceaccount"
 )
 
@@ -40,8 +41,8 @@ type ControlInterface interface {
 var _ ControlInterface = &defaultCassandraClusterControl{}
 
 type defaultCassandraClusterControl struct {
-	seedProviderServiceControl ControlInterface
-	nodesServiceControl        ControlInterface
+	seedProviderServiceControl service.Interface
+	nodesServiceControl        service.Interface
 	nodepoolControl            nodepool.Interface
 	pilotControl               pilot.Interface
 	serviceAccountControl      serviceaccount.Interface
@@ -53,8 +54,8 @@ type defaultCassandraClusterControl struct {
 }
 
 func NewControl(
-	seedProviderServiceControl ControlInterface,
-	nodesServiceControl ControlInterface,
+	seedProviderServiceControl service.Interface,
+	nodesServiceControl service.Interface,
 	nodepoolControl nodepool.Interface,
 	pilotControl pilot.Interface,
 	serviceAccountControl serviceaccount.Interface,

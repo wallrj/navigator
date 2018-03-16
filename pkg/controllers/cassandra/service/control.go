@@ -23,6 +23,10 @@ const (
 	SeedLabelValue = "true"
 )
 
+type Interface interface {
+	Sync(*v1alpha1.CassandraCluster) error
+}
+
 type serviceFactory func(*v1alpha1.CassandraCluster) *apiv1.Service
 
 type control struct {
@@ -32,12 +36,14 @@ type control struct {
 	serviceFactory serviceFactory
 }
 
+var _ Interface = &control{}
+
 func NewControl(
 	kubeClient kubernetes.Interface,
 	serviceLister corelisters.ServiceLister,
 	recorder record.EventRecorder,
 	serviceFactory serviceFactory,
-) *control {
+) Interface {
 	return &control{
 		kubeClient:     kubeClient,
 		serviceLister:  serviceLister,
