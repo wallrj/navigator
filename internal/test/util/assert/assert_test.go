@@ -3,10 +3,11 @@ package assert_test
 import (
 	"testing"
 
+	"github.com/kr/pretty"
+
 	"github.com/jetstack/navigator/internal/test/util/assert"
 	"github.com/jetstack/navigator/internal/test/util/generate"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
-	"github.com/kr/pretty"
 )
 
 func TestObjectAttributes(t *testing.T) {
