@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+
 	"github.com/golang/glog"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,8 +20,6 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
-	rbacinformers "k8s.io/client-go/informers/rbac/v1beta1"
-
 	navigatorclientset "github.com/jetstack/navigator/pkg/client/clientset/versioned"
 	navigatorinformers "github.com/jetstack/navigator/pkg/client/informers/externalversions/navigator/v1alpha1"
 	listersv1alpha1 "github.com/jetstack/navigator/pkg/client/listers/navigator/v1alpha1"
@@ -31,6 +31,17 @@ import (
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/seedlabeller"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/service"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/serviceaccount"
+	apiv1 "k8s.io/api/core/v1"
+	rbacinformers "k8s.io/client-go/informers/rbac/v1beta1"
+)
+
+const (
+	ErrorSync = "ErrSync"
+
+	SuccessSync = "SuccessSync"
+
+	MessageErrorSync   = "Error syncing CassandraCluster: %s"
+	MessageSuccessSync = "Successfully synced CassandraCluster"
 )
 
 // NewCassandra returns a new CassandraController that can be used
@@ -40,7 +51,7 @@ import (
 // It accepts a list of informers that are then used to monitor the state of the
 // target cluster.
 type CassandraController struct {
-	control                     ControlInterface
+	controls                    []Interface
 	cassLister                  listersv1alpha1.CassandraClusterLister
 	statefulSetLister           appslisters.StatefulSetLister
 	cassListerSynced            cache.InformerSynced
@@ -96,7 +107,10 @@ func NewCassandra(
 	cc.serviceAccountsListerSynced = serviceAccounts.Informer().HasSynced
 	cc.rolesListerSynced = roles.Informer().HasSynced
 	cc.roleBindingsListerSynced = roleBindings.Informer().HasSynced
-	cc.control = NewControl(
+	cc.controls = []Interface{
+		NewControl(
+			recorder,
+		),
 		service.NewControl(
 			kubeClient,
 			services.Lister(),
@@ -142,8 +156,7 @@ func NewCassandra(
 			pods.Lister(),
 			recorder,
 		),
-		recorder,
-	)
+	}
 	cc.recorder = recorder
 	return cc
 }
@@ -236,7 +249,31 @@ func (e *CassandraController) sync(key string) (err error) {
 		)
 		return err
 	}
-	return e.control.Sync(cass.DeepCopy())
+	cass = cass.DeepCopy()
+	var errors []error
+	for _, control := range e.controls {
+		err = control.Sync(cass)
+		errors = append(errors, err)
+	}
+	err = utilerrors.NewAggregate(errors)
+	if err == nil {
+		e.recorder.Eventf(
+			cass,
+			apiv1.EventTypeNormal,
+			SuccessSync,
+			MessageSuccessSync,
+			err,
+		)
+	} else {
+		e.recorder.Eventf(
+			cass,
+			apiv1.EventTypeWarning,
+			ErrorSync,
+			MessageErrorSync,
+			err,
+		)
+	}
+	return err
 }
 
 func (e *CassandraController) enqueueCassandraCluster(obj interface{}) {

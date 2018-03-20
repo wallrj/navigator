@@ -47,20 +47,13 @@ func ClusterForTest() *v1alpha1.CassandraCluster {
 }
 
 type Fixture struct {
-	t                          *testing.T
-	Cluster                    *v1alpha1.CassandraCluster
-	SeedProviderServiceControl cassandra.ControlInterface
-	NodesServiceControl        cassandra.ControlInterface
-	NodepoolControl            nodepool.Interface
-	PilotControl               pilot.Interface
-	ServiceAccountControl      serviceaccount.Interface
-	RoleControl                role.Interface
-	RoleBindingControl         rolebinding.Interface
-	SeedLabellerControl        seedlabeller.Interface
-	k8sClient                  *fake.Clientset
-	k8sObjects                 []runtime.Object
-	naviClient                 *navigatorfake.Clientset
-	naviObjects                []runtime.Object
+	t           *testing.T
+	Cluster     *v1alpha1.CassandraCluster
+	control     cassandra.Interface
+	k8sClient   *fake.Clientset
+	k8sObjects  []runtime.Object
+	naviClient  *navigatorfake.Clientset
+	naviObjects []runtime.Object
 }
 
 func NewFixture(t *testing.T) *Fixture {
@@ -169,14 +162,6 @@ func (f *Fixture) setupAndSync() error {
 	}
 
 	c := cassandra.NewControl(
-		f.SeedProviderServiceControl,
-		f.NodesServiceControl,
-		f.NodepoolControl,
-		f.PilotControl,
-		f.ServiceAccountControl,
-		f.RoleControl,
-		f.RoleBindingControl,
-		f.SeedLabellerControl,
 		recorder,
 	)
 	stopCh := make(chan struct{})
