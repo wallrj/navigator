@@ -9,6 +9,7 @@ import (
 	"github.com/jetstack/navigator/internal/test/unit/framework"
 	"github.com/jetstack/navigator/internal/test/util/generate"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/actions"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
 )
 
 func TestScaleOut(t *testing.T) {
@@ -29,7 +30,7 @@ func TestScaleOut(t *testing.T) {
 			},
 			nodePool: generate.CassandraClusterNodePoolConfig{
 				Name:     "pool1",
-				Replicas: 123,
+				Replicas: 2,
 			},
 			expectedErr: true,
 		},
@@ -39,7 +40,7 @@ func TestScaleOut(t *testing.T) {
 					generate.StatefulSetConfig{
 						Name:      "cass-cluster1-pool1",
 						Namespace: "ns1",
-						Replicas:  int32Ptr(122),
+						Replicas:  util.Int32Ptr(2),
 					},
 				),
 			},
@@ -49,7 +50,7 @@ func TestScaleOut(t *testing.T) {
 			},
 			nodePool: generate.CassandraClusterNodePoolConfig{
 				Name:     "pool1",
-				Replicas: 123,
+				Replicas: 3,
 			},
 			expectedErr: true,
 			mutator: func(f *framework.StateFixture) {
@@ -68,7 +69,7 @@ func TestScaleOut(t *testing.T) {
 					generate.StatefulSetConfig{
 						Name:      "cass-cluster1-pool1",
 						Namespace: "ns1",
-						Replicas:  int32Ptr(124),
+						Replicas:  util.Int32Ptr(2),
 					},
 				),
 			},
@@ -78,12 +79,12 @@ func TestScaleOut(t *testing.T) {
 			},
 			nodePool: generate.CassandraClusterNodePoolConfig{
 				Name:     "pool1",
-				Replicas: 123,
+				Replicas: 1,
 			},
 			expectedStatefulSet: &generate.StatefulSetConfig{
 				Name:      "cass-cluster1-pool1",
 				Namespace: "ns1",
-				Replicas:  int32Ptr(124),
+				Replicas:  util.Int32Ptr(2),
 			},
 			expectedErr: true,
 		},
@@ -93,7 +94,7 @@ func TestScaleOut(t *testing.T) {
 					generate.StatefulSetConfig{
 						Name:      "cass-cluster1-pool1",
 						Namespace: "ns1",
-						Replicas:  int32Ptr(124),
+						Replicas:  util.Int32Ptr(3),
 					},
 				),
 			},
@@ -103,12 +104,12 @@ func TestScaleOut(t *testing.T) {
 			},
 			nodePool: generate.CassandraClusterNodePoolConfig{
 				Name:     "pool1",
-				Replicas: 124,
+				Replicas: 3,
 			},
 			expectedStatefulSet: &generate.StatefulSetConfig{
 				Name:      "cass-cluster1-pool1",
 				Namespace: "ns1",
-				Replicas:  int32Ptr(124),
+				Replicas:  util.Int32Ptr(3),
 			},
 			expectedErr: false,
 		},
@@ -118,7 +119,7 @@ func TestScaleOut(t *testing.T) {
 					generate.StatefulSetConfig{
 						Name:      "cass-cluster1-pool1",
 						Namespace: "ns1",
-						Replicas:  int32Ptr(122),
+						Replicas:  util.Int32Ptr(2),
 					},
 				),
 			},
@@ -128,12 +129,36 @@ func TestScaleOut(t *testing.T) {
 			},
 			nodePool: generate.CassandraClusterNodePoolConfig{
 				Name:     "pool1",
-				Replicas: 123,
+				Replicas: 3,
 			},
 			expectedStatefulSet: &generate.StatefulSetConfig{
 				Name:      "cass-cluster1-pool1",
 				Namespace: "ns1",
-				Replicas:  int32Ptr(123),
+				Replicas:  util.Int32Ptr(3),
+			},
+		},
+		"The replicas count is only incremented by 1": {
+			kubeObjects: []runtime.Object{
+				generate.StatefulSet(
+					generate.StatefulSetConfig{
+						Name:      "cass-cluster1-pool1",
+						Namespace: "ns1",
+						Replicas:  util.Int32Ptr(2),
+					},
+				),
+			},
+			cluster: generate.CassandraClusterConfig{
+				Name:      "cluster1",
+				Namespace: "ns1",
+			},
+			nodePool: generate.CassandraClusterNodePoolConfig{
+				Name:     "pool1",
+				Replicas: 4,
+			},
+			expectedStatefulSet: &generate.StatefulSetConfig{
+				Name:      "cass-cluster1-pool1",
+				Namespace: "ns1",
+				Replicas:  util.Int32Ptr(3),
 			},
 		},
 	}

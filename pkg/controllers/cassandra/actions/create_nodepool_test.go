@@ -9,6 +9,7 @@ import (
 	"github.com/jetstack/navigator/internal/test/unit/framework"
 	"github.com/jetstack/navigator/internal/test/util/generate"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/actions"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
 )
 
 func TestCreateNodePool(t *testing.T) {
@@ -32,7 +33,7 @@ func TestCreateNodePool(t *testing.T) {
 			expectedStatefulSet: generate.StatefulSetConfig{
 				Name:      "cass-cluster1-pool1",
 				Namespace: "ns1",
-				Replicas:  int32Ptr(0),
+				Replicas:  util.Int32Ptr(0),
 			},
 		},
 		"Idempotent: CreateNodePool can be executed again without error": {
@@ -41,7 +42,7 @@ func TestCreateNodePool(t *testing.T) {
 					generate.StatefulSetConfig{
 						Name:      "cass-cluster1-pool1",
 						Namespace: "ns1",
-						Replicas:  int32Ptr(10),
+						Replicas:  util.Int32Ptr(10),
 					},
 				),
 			},
@@ -52,7 +53,7 @@ func TestCreateNodePool(t *testing.T) {
 			expectedStatefulSet: generate.StatefulSetConfig{
 				Name:      "cass-cluster1-pool1",
 				Namespace: "ns1",
-				Replicas:  int32Ptr(10),
+				Replicas:  util.Int32Ptr(10),
 			},
 			expectedErr: false,
 		},

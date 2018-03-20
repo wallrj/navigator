@@ -3,11 +3,10 @@ package actions
 import (
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/nodepool"
+	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
 )
 
 type ScaleOut struct {
@@ -27,21 +26,15 @@ func (a *ScaleOut) Execute(s *controllers.State) error {
 	if err != nil {
 		return err
 	}
-	ss = ss.DeepCopy()
-	if ss.Spec.Replicas == nil || *ss.Spec.Replicas < a.NodePool.Replicas {
-		ss.Spec.Replicas = &a.NodePool.Replicas
+	switch {
+	case *ss.Spec.Replicas < a.NodePool.Replicas:
+		ss = ss.DeepCopy()
+		ss.Spec.Replicas = util.Int32Ptr(*ss.Spec.Replicas + 1)
 		_, err = s.Clientset.AppsV1beta1().StatefulSets(ss.Namespace).Update(ss)
-		if err == nil {
-			s.Recorder.Eventf(
-				a.Cluster,
-				corev1.EventTypeNormal,
-				a.Name(),
-				"Scaled node pool %q to %d replicas", a.NodePool.Name, a.NodePool.Replicas,
-			)
+		if err != nil {
+			return err
 		}
-		return err
-	}
-	if *ss.Spec.Replicas > a.NodePool.Replicas {
+	case *ss.Spec.Replicas > a.NodePool.Replicas:
 		return fmt.Errorf(
 			"the NodePool.Replicas value (%d) "+
 				"is less than the existing StatefulSet.Replicas value (%d)",
