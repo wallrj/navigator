@@ -1,14 +1,58 @@
 package validation
 
 import (
+	"fmt"
 	"reflect"
+	"strings"
 
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	"github.com/jetstack/navigator/pkg/apis/navigator"
+	"github.com/jetstack/navigator/pkg/cassandra/version"
 )
+
+type versionSpecOp string
+
+const (
+	versionSpecGe versionSpecOp = ">="
+	versionSpecLt               = "<"
+)
+
+type versionSpec map[versionSpecOp]*version.Version
+
+var supportedCassandraVersions = versionSpec{
+	versionSpecGe: version.New("3.0.0"),
+	versionSpecLt: version.New("4.0.0"),
+}
+
+func (vs versionSpec) Check(v *version.Version) bool {
+	for op, opVersion := range vs {
+		switch op {
+		case versionSpecGe:
+			if v.LessThan(opVersion) {
+				return false
+			}
+		case versionSpecLt:
+			if opVersion.Equal(v) {
+				return false
+			}
+			if opVersion.LessThan(v) {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func (vs versionSpec) String() string {
+	out := []string{}
+	for op, opVersion := range vs {
+		out = append(out, fmt.Sprintf("%s %s", op, opVersion))
+	}
+	return strings.Join(out, ", ")
+}
 
 func ValidateCassandraClusterNodePool(np *navigator.CassandraClusterNodePool, fldPath *field.Path) field.ErrorList {
 	// TODO: call k8s.io/kubernetes/pkg/apis/core/validation.ValidateResourceRequirements on np.Resources
@@ -26,6 +70,16 @@ func ValidateCassandraClusterUpdate(old, new *navigator.CassandraCluster) field.
 	allErrs := ValidateCassandraCluster(new)
 
 	fldPath := field.NewPath("spec")
+
+	if !new.Spec.Version.Equal(&old.Spec.Version) {
+		allErrs = append(
+			allErrs,
+			field.Forbidden(
+				fldPath.Child("version"),
+				"cannot change the version of an existing cluster.",
+			),
+		)
+	}
 
 	npPath := fldPath.Child("nodePools")
 	for i, newNp := range new.Spec.NodePools {
@@ -60,6 +114,20 @@ func ValidateCassandraClusterUpdate(old, new *navigator.CassandraCluster) field.
 
 func ValidateCassandraClusterSpec(spec *navigator.CassandraClusterSpec, fldPath *field.Path) field.ErrorList {
 	allErrs := ValidateNavigatorClusterConfig(&spec.NavigatorClusterConfig, fldPath)
+
+	if !supportedCassandraVersions.Check(&spec.Version) {
+		allErrs = append(
+			allErrs,
+			field.Forbidden(
+				fldPath.Child("version"),
+				fmt.Sprintf(
+					"%s is not supported. Supported versions are: %s",
+					spec.Version, supportedCassandraVersions,
+				),
+			),
+		)
+	}
+
 	npPath := fldPath.Child("nodePools")
 	allNames := sets.String{}
 	for i, np := range spec.NodePools {

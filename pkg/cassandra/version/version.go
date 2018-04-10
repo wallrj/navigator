@@ -108,3 +108,23 @@ var _ json.Marshaler = &Version{}
 func (v Version) Semver() string {
 	return v.semver.String()
 }
+
+func (v *Version) BumpPatch() *Version {
+	sv := semver.New(v.Semver())
+	sv.BumpPatch()
+	return New(sv.String())
+}
+func (v *Version) BumpMinor() *Version {
+	sv := semver.New(v.Semver())
+	sv.BumpMinor()
+	return New(sv.String())
+}
+func (v *Version) BumpMajor() *Version {
+	sv := semver.New(v.Semver())
+	sv.BumpMajor()
+	return New(sv.String())
+}
+
+func (v *Version) LessThan(versionB *Version) bool {
+	return v.semver.LessThan(versionB.semver)
+}
