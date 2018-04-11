@@ -113,24 +113,51 @@ func (c *pilotControl) Sync(cluster *v1alpha1.CassandraCluster) error {
 
 	for _, pilot := range pilots {
 		pilotNodePoolName := pilot.Labels[v1alpha1.CassandraNodePoolNameLabel]
-		setForPilot := setsByNodePoolName[pilotNodePoolName]
-		pilotIndexLabel := pilot.Labels[v1alpha1.CassandraNodePoolIndexLabel]
+		setForPilot, setFound := setsByNodePoolName[pilotNodePoolName]
+		if !setFound {
+			glog.Errorf("Unable to find statefulset with nodepool label: %q", pilotNodePoolName)
+			continue
+		}
+		pilotIndexLabel, pilotIndexLabelFound := pilot.Labels[v1alpha1.CassandraNodePoolIndexLabel]
+		if !pilotIndexLabelFound {
+			glog.Errorf(
+				"Unable to find nodepool index label on pilot: '%s/%s'",
+				pilot.Namespace, pilot.Name,
+			)
+			continue
+		}
 		pilotIndex, err := strconv.Atoi(pilotIndexLabel)
 		if err != nil {
 			glog.Errorf(
 				"Unable to parse pilot %s/%s index: %q",
 				pilot.Namespace, pilot.Name, pilotIndexLabel,
 			)
+			continue
 		}
-		if int32(pilotIndex) > setForPilot.Status.CurrentReplicas {
-			err := c.naviClient.NavigatorV1alpha1().
-				Pilots(cluster.Namespace).Delete(pilot.Name, &metav1.DeleteOptions{})
-			if err != nil {
-				if !k8sErrors.IsNotFound(err) {
-					return errors.Wrapf(
-						err, "unable to delete pilot %s/%s", pilot.Namespace, pilot.Name,
-					)
-				}
+		if int32(pilotIndex+1) <= setForPilot.Status.CurrentReplicas {
+			continue
+		}
+
+		_, err = c.pods.Pods(cluster.Namespace).Get(pilot.Name)
+		if err == nil {
+			glog.V(4).Infof(
+				"Not deleting pilot %s/%s because its pod still exists.",
+				pilot.Namespace, pilot.Name,
+			)
+			continue
+		}
+		if !k8sErrors.IsNotFound(err) {
+			return errors.Wrap(err, "unable to get pod for pilot")
+		}
+		err = c.naviClient.NavigatorV1alpha1().
+			Pilots(cluster.Namespace).Delete(pilot.Name, &metav1.DeleteOptions{})
+		if err == nil {
+			glog.V(4).Infof("Deleted pilot %s/%s.", pilot.Namespace, pilot.Name)
+		} else {
+			if !k8sErrors.IsNotFound(err) {
+				return errors.Wrapf(
+					err, "unable to delete pilot %s/%s", pilot.Namespace, pilot.Name,
+				)
 			}
 		}
 	}
@@ -142,7 +169,7 @@ func parsePodIndex(podName string) (int, bool) {
 	if len(parts) < 2 {
 		return -1, false
 	}
-	index, err := strconv.Atoi(parts[len(parts)])
+	index, err := strconv.Atoi(parts[len(parts)-1])
 	if err != nil {
 		return -1, false
 	}
