@@ -1,6 +1,10 @@
 package pilot
 
 import (
+	"strconv"
+	"strings"
+
+	"k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -8,6 +12,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/golang/glog"
 	"github.com/pkg/errors"
 
 	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
@@ -89,7 +94,59 @@ func (c *pilotControl) Sync(cluster *v1alpha1.CassandraCluster) error {
 			return errors.Wrap(err, "unable to ensure pilot")
 		}
 	}
+
+	sets, err := c.statefulSets.StatefulSets(cluster.Namespace).List(selector)
+	if err != nil {
+		return errors.Wrap(err, "unable to list statefulsets")
+	}
+
+	setsByNodePoolName := map[string]*v1beta1.StatefulSet{}
+	for _, set := range sets {
+		setNodePoolName := set.Labels[v1alpha1.CassandraNodePoolNameLabel]
+		setsByNodePoolName[setNodePoolName] = set
+	}
+
+	pilots, err := c.pilots.Pilots(cluster.Namespace).List(selector)
+	if err != nil {
+		return errors.Wrap(err, "unable to list pilots")
+	}
+
+	for _, pilot := range pilots {
+		pilotNodePoolName := pilot.Labels[v1alpha1.CassandraNodePoolNameLabel]
+		setForPilot := setsByNodePoolName[pilotNodePoolName]
+		pilotIndexLabel := pilot.Labels[v1alpha1.CassandraNodePoolIndexLabel]
+		pilotIndex, err := strconv.Atoi(pilotIndexLabel)
+		if err != nil {
+			glog.Errorf(
+				"Unable to parse pilot %s/%s index: %q",
+				pilot.Namespace, pilot.Name, pilotIndexLabel,
+			)
+		}
+		if int32(pilotIndex) > setForPilot.Status.CurrentReplicas {
+			err := c.naviClient.NavigatorV1alpha1().
+				Pilots(cluster.Namespace).Delete(pilot.Name, &metav1.DeleteOptions{})
+			if err != nil {
+				if !k8sErrors.IsNotFound(err) {
+					return errors.Wrapf(
+						err, "unable to delete pilot %s/%s", pilot.Namespace, pilot.Name,
+					)
+				}
+			}
+		}
+	}
 	return nil
+}
+
+func parsePodIndex(podName string) (int, bool) {
+	parts := strings.Split(podName, "-")
+	if len(parts) < 2 {
+		return -1, false
+	}
+	index, err := strconv.Atoi(parts[len(parts)])
+	if err != nil {
+		return -1, false
+	}
+	return index, true
 }
 
 func PilotForCluster(cluster *v1alpha1.CassandraCluster, pod *v1.Pod) *v1alpha1.Pilot {
@@ -102,5 +159,9 @@ func PilotForCluster(cluster *v1alpha1.CassandraCluster, pod *v1.Pod) *v1alpha1.
 		},
 	}
 	o.Labels[v1alpha1.CassandraNodePoolNameLabel] = pod.Labels[v1alpha1.CassandraNodePoolNameLabel]
+	index, found := parsePodIndex(pod.Name)
+	if found {
+		o.Labels[v1alpha1.CassandraNodePoolIndexLabel] = strconv.Itoa(index)
+	}
 	return o
 }
