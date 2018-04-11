@@ -8,30 +8,32 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/kr/pretty"
+
 	"github.com/jetstack/navigator/internal/test/unit/framework"
 	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	"github.com/jetstack/navigator/pkg/controllers"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/pilot"
 	casstesting "github.com/jetstack/navigator/pkg/controllers/cassandra/testing"
-	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
 )
 
-func clusterPod(cluster *v1alpha1.CassandraCluster, name string) *v1.Pod {
-	pod := &v1.Pod{}
-	pod.SetName(name)
-	pod.SetNamespace(cluster.GetNamespace())
-	pod.SetOwnerReferences(
-		[]metav1.OwnerReference{
-			util.NewControllerRef(cluster),
+func clusterPod(cluster *v1alpha1.CassandraCluster, name, nodePoolName string) *v1.Pod {
+	return &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: cluster.Namespace,
+			Labels: map[string]string{
+				v1alpha1.CassandraClusterNameLabel:  cluster.Name,
+				v1alpha1.CassandraNodePoolNameLabel: nodePoolName,
+			},
 		},
-	)
-	return pod
+	}
 }
 
 func TestPilotSync(t *testing.T) {
 	cluster1 := casstesting.ClusterForTest()
-	cluster1pod1 := clusterPod(cluster1, "c1p1")
-	cluster1pod2 := clusterPod(cluster1, "c1p2")
+	cluster1pod1 := clusterPod(cluster1, "c1p1", "np-1")
+	cluster1pod2 := clusterPod(cluster1, "c1p2", "np-1")
 	cluster1pilot1 := pilot.PilotForCluster(cluster1, cluster1pod1)
 	cluster1pilot1foreign := cluster1pilot1.DeepCopy()
 	cluster1pilot1foreign.SetOwnerReferences([]metav1.OwnerReference{})
@@ -39,7 +41,7 @@ func TestPilotSync(t *testing.T) {
 	cluster2 := casstesting.ClusterForTest()
 	cluster2.SetName("cluster2")
 	cluster2.SetUID("uid2")
-	cluster2pod1 := clusterPod(cluster2, "c2p1")
+	cluster2pod1 := clusterPod(cluster2, "c2p1", "np-1")
 
 	type testT struct {
 		kubeObjects []runtime.Object
@@ -66,7 +68,7 @@ func TestPilotSync(t *testing.T) {
 				expectedPilotCount := 2
 				pilotCount := len(pilots.Items)
 				if pilotCount != expectedPilotCount {
-					t.Log(pilots.Items)
+					t.Log(pretty.Sprint(pilots))
 					t.Errorf("Unexpected pilot count: %d != %d", expectedPilotCount, pilotCount)
 				}
 			},
@@ -86,7 +88,7 @@ func TestPilotSync(t *testing.T) {
 				expectedPilotCount := 1
 				pilotCount := len(pilots.Items)
 				if pilotCount != expectedPilotCount {
-					t.Log(pilots.Items)
+					t.Log(pretty.Sprint(pilots))
 					t.Errorf("Unexpected pilot count: %d != %d", expectedPilotCount, pilotCount)
 				}
 			},
@@ -126,6 +128,8 @@ func TestPilotSync(t *testing.T) {
 				if err != nil {
 					if !test.expectErr {
 						t.Errorf("Unexpected error: %s", err)
+					} else {
+						t.Logf("The following error was expected: %s", err)
 					}
 				} else {
 					if test.expectErr {

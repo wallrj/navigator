@@ -10,6 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/selection"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
 
+	"github.com/pkg/errors"
+
 	"github.com/jetstack/navigator/pkg/apis/navigator"
 	v1alpha1 "github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 )
@@ -64,6 +66,35 @@ func SelectorForCluster(c *v1alpha1.CassandraCluster) (labels.Selector, error) {
 		return nil, err
 	}
 	return labels.NewSelector().Add(*clusterNameReq), nil
+}
+
+func SelectorForClusterNodePools(c *v1alpha1.CassandraCluster, nodePoolNames ...string) (labels.Selector, error) {
+	selector, err := SelectorForCluster(c)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create base selector")
+	}
+	nodePoolNameExistsRequirement, err := labels.NewRequirement(
+		v1alpha1.CassandraNodePoolNameLabel,
+		selection.Exists,
+		nil,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to create nodepool label requirement")
+	}
+	selector = selector.Add(*nodePoolNameExistsRequirement)
+
+	if len(nodePoolNames) > 0 {
+		nodePoolNamesRequirement, err := labels.NewRequirement(
+			v1alpha1.CassandraNodePoolNameLabel,
+			selection.In,
+			nodePoolNames,
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to create nodepool name requirement")
+		}
+		selector = selector.Add(*nodePoolNamesRequirement)
+	}
+	return selector, nil
 }
 
 func NodePoolLabels(

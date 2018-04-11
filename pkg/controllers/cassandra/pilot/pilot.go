@@ -4,15 +4,15 @@ import (
 	"k8s.io/api/core/v1"
 	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	appslisters "k8s.io/client-go/listers/apps/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 
+	"github.com/pkg/errors"
+
 	"github.com/jetstack/navigator/pkg/apis/navigator/v1alpha1"
 	navigator "github.com/jetstack/navigator/pkg/client/clientset/versioned"
 	navlisters "github.com/jetstack/navigator/pkg/client/listers/navigator/v1alpha1"
-	"github.com/jetstack/navigator/pkg/controllers"
 	"github.com/jetstack/navigator/pkg/controllers/cassandra/util"
 )
 
@@ -51,66 +51,44 @@ func NewControl(
 
 }
 
-func (c *pilotControl) clusterPods(cluster *v1alpha1.CassandraCluster) ([]*v1.Pod, error) {
-	var clusterPods []*v1.Pod
-	allPods, err := c.pods.Pods(cluster.Namespace).List(labels.Everything())
-	if err != nil {
-		return clusterPods, err
-	}
-	for _, pod := range allPods {
-		podControlledByCluster, err := controllers.PodControlledByCluster(
-			cluster,
-			pod,
-			c.statefulSets,
-		)
-		if err != nil {
-			return clusterPods, err
-		}
-		if !podControlledByCluster {
-			continue
-		}
-		clusterPods = append(clusterPods, pod)
-	}
-	return clusterPods, nil
-}
-
-func (c *pilotControl) createPilot(cluster *v1alpha1.CassandraCluster, pod *v1.Pod) error {
+func (c *pilotControl) ensurePilot(cluster *v1alpha1.CassandraCluster, pod *v1.Pod) error {
 	desiredPilot := PilotForCluster(cluster, pod)
-	client := c.naviClient.NavigatorV1alpha1().Pilots(desiredPilot.GetNamespace())
-	lister := c.pilots.Pilots(desiredPilot.GetNamespace())
-	existingPilot, err := lister.Get(desiredPilot.GetName())
-	// Pilot already exists
+	existingPilot, err := c.pilots.Pilots(desiredPilot.Namespace).Get(desiredPilot.Name)
+	// If Pilot already exists, check that it belongs to this cluster
 	if err == nil {
-		return util.OwnerCheck(existingPilot, cluster)
+		return errors.Wrap(
+			util.OwnerCheck(existingPilot, cluster),
+			"owner check error",
+		)
 	}
 	// The only error we expect is that the pilot does not exist.
 	if !k8sErrors.IsNotFound(err) {
-		return err
+		return errors.Wrap(err, "unable to get pilot")
 	}
-	_, err = client.Create(desiredPilot)
-	return err
+	_, err = c.naviClient.NavigatorV1alpha1().Pilots(desiredPilot.Namespace).Create(desiredPilot)
+	if err == nil || k8sErrors.IsAlreadyExists(err) {
+		return nil
+	}
+	return errors.Wrap(err, "unable to create pilot")
 }
 
-func (c *pilotControl) syncPilots(cluster *v1alpha1.CassandraCluster) error {
-	pods, err := c.clusterPods(cluster)
+// Create a Pilot for every pod that has a matching ClusterName label and a NodePoolNameLabelKey
+// Delete Pilots only if there is no corresponding pod and if the index is higher than the current replica count.
+func (c *pilotControl) Sync(cluster *v1alpha1.CassandraCluster) error {
+	selector, err := util.SelectorForClusterNodePools(cluster)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "unable to create cluster nodepools selector")
+	}
+	pods, err := c.pods.Pods(cluster.Namespace).List(selector)
+	if err != nil {
+		return errors.Wrap(err, "unable to list pods")
 	}
 	for _, pod := range pods {
-		err = c.createPilot(cluster, pod)
+		err := c.ensurePilot(cluster, pod)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "unable to ensure pilot")
 		}
 	}
-	return err
-}
-
-func (c *pilotControl) Sync(cluster *v1alpha1.CassandraCluster) error {
-	err := c.syncPilots(cluster)
-	if err != nil {
-		return err
-	}
-	// TODO: Housekeeping. Remove pilots that don't have a corresponding pod.
 	return nil
 }
 
